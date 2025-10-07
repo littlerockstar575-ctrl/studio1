@@ -31,3 +31,8 @@ export const GenerateTestQuestionsOutputSchema = z.object({
   questions: z.array(QuestionSchema).describe('An array of generated questions.'),
 });
 export type GenerateTestQuestionsOutput = z.infer<typeof GenerateTestQuestionsOutputSchema>;
+
+export const GeneratePythonFactOutputSchema = z.object({
+    fact: z.string().describe('An interesting fact about the Python programming language.'),
+});
+export type GeneratePythonFactOutput = z.infer<typeof GeneratePythonFactOutputSchema>;

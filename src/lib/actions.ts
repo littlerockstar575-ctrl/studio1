@@ -2,6 +2,7 @@
 
 import { generateDailyChallenge } from "@/ai/flows/generate-daily-challenge";
 import { generateTestQuestions } from "@/ai/flows/generate-test-questions";
+import { generatePythonFact } from "@/ai/flows/generate-python-fact";
 import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
@@ -33,5 +34,15 @@ export async function getTestQuestions(input: { topic: string }): Promise<{ succ
     } catch (error) {
         console.error(error);
         return { failure: "Failed to generate test questions. Please try again." };
+    }
+}
+
+export async function getPythonFact(): Promise<{ success: string } | { failure: string }> {
+    try {
+        const result = await generatePythonFact();
+        return { success: result.fact };
+    } catch (error) {
+        console.error(error);
+        return { failure: "Failed to generate a fact. Please try again." };
     }
 }

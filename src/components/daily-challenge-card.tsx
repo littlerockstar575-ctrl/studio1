@@ -13,8 +13,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck } from "lucide-react";
+import { getDailyChallenge, getPythonFact } from "@/lib/actions";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
 import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
@@ -39,6 +39,8 @@ export function DailyChallengeCard() {
   const [userCode, setUserCode] = useState("// write your code here");
   const [timer, setTimer] = useState(CHALLENGE_DURATION_STUDY);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [pythonFact, setPythonFact] = useState<string | null>(null);
+  const [isFactLoading, setIsFactLoading] = useState(false);
 
 
   const fetchChallenge = useCallback(async () => {
@@ -50,6 +52,7 @@ export function DailyChallengeCard() {
     setIsCompletable(false);
     setProgress(0);
     setUserCode("// write your code here");
+    setPythonFact(null);
     
     // Determine challenge type
     if (goal.toLowerCase().includes("code") || goal.toLowerCase().includes("python") || goal.toLowerCase().includes("javascript")) {
@@ -98,6 +101,16 @@ export function DailyChallengeCard() {
     return () => clearInterval(interval);
   }, [isLoading, isCompleted, challenge, challengeType]);
 
+  const handleFetchFact = async () => {
+    setIsFactLoading(true);
+    const result = await getPythonFact();
+    if (result.success) {
+      setPythonFact(result.success);
+    } else {
+      setPythonFact("Could not fetch a fun fact. Maybe try again?");
+    }
+    setIsFactLoading(false);
+  }
 
   const handleComplete = () => {
     if (challengeType === 'coding') {
@@ -108,6 +121,7 @@ export function DailyChallengeCard() {
             setStreak(s => s + 1);
             setCompletedChallenges(c => c + 1);
             toast({ title: "Challenge Done!", description: "You've submitted your code." });
+            handleFetchFact();
         } else {
             toast({ variant: 'destructive', title: "Not Quite", description: "Your code seems a bit short. Try to be more thorough!" });
         }
@@ -183,6 +197,20 @@ export function DailyChallengeCard() {
                 <PartyPopper className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
                 <p className="text-accent-foreground/80">You've earned {challengeType === 'coding' ? 150 : 100} coins and extended your streak!</p>
+                
+                {challengeType === 'coding' && pythonFact && (
+                  <div className="p-4 bg-background/50 rounded-lg text-sm text-center italic space-y-3">
+                    <div className="flex items-center justify-center gap-2 font-semibold">
+                      <Lightbulb className="h-5 w-5 text-yellow-400" />
+                      Python Fact
+                    </div>
+                    {isFactLoading ? <Skeleton className="h-5 w-full" /> : <p>"{pythonFact}"</p>}
+                    <Button onClick={handleFetchFact} size="sm" variant="ghost" disabled={isFactLoading}>
+                      <RefreshCw className={`mr-2 h-4 w-4 ${isFactLoading ? 'animate-spin' : ''}`} />
+                      Show Another Fact
+                    </Button>
+                  </div>
+                )}
                 
                 <div className="flex gap-4 justify-center">
                     <Button onClick={handleNewChallenge}>
