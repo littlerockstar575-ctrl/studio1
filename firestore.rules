@@ -1,0 +1,152 @@
+/**
+ * @file Firestore Security Rules for GoalForge.
+ *
+ * @core_philosophy This ruleset enforces a strict user-ownership model for user profiles, goals, and user challenges. Challenge templates are publicly readable.
+ * @data_structure
+ *  - /users/{userId}: Stores user profiles, accessible only by the user themselves.
+ *  - /users/{userId}/goals/{goalId}: Stores goals, accessible only by the user who owns them.
+ *  - /challengeTemplates/{challengeTemplateId}: Stores challenge templates, publicly readable.
+ *  - /users/{userId}/userChallenges/{userChallengeId}: Stores user challenges, accessible only by the user who owns them.
+ * @key_security_decisions
+ *  - User listing is disabled.
+ *  - Challenge templates are publicly readable.
+ *  - All write operations are protected by authorization checks based on user identity.
+ *  - Denormalization is used to avoid costly `get()` calls in security rules.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces access control for user profiles, ensuring only the authenticated user can read and write their own profile.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user creates their own profile with matching UID.
+     * @allow (get, update, delete) - Authenticated user accesses their own profile with matching UID.
+     * @deny (create, get, update, delete) - Any other user attempts to access this profile.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      // Allow the user to read their own profile
+      allow get: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to list (which is to see if the document exists) their own profile
+      allow list: if false;
+
+      // Allow the user to create their own profile, enforcing that the userId matches the authenticated user's UID.
+      allow create: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to update their own profile
+      allow update: if isExistingOwner(userId);
+
+      // Allow the user to delete their own profile
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces access control for goals associated with a user, ensuring only the owning user can access them.
+     * @path /users/{userId}/goals/{goalId}
+     * @allow (create) - Authenticated user creates a goal under their profile.
+     * @allow (get, update, delete) - Authenticated user accesses a goal under their profile.
+     * @deny (create, get, update, delete) - Any other user attempts to access this goal.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/goals/{goalId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      // Allow the user to read their own goals
+      allow get: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to list their own goals
+      allow list: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to create goals, ensuring the userId matches the authenticated user's UID.
+      allow create: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to update their own goals
+      allow update: if isExistingOwner(userId);
+
+      // Allow the user to delete their own goals
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Allows public read access to challenge templates.
+     * @path /challengeTemplates/{challengeTemplateId}
+     * @allow (get, list) - Any user can read challenge templates.
+     * @deny (create, update, delete) - No user can create, update, or delete challenge templates.
+     * @principle Provides public read access for shared, non-sensitive data.
+     */
+    match /challengeTemplates/{challengeTemplateId} {
+      // Allow anyone to read challenge templates
+      allow get, list: if true;
+
+      // No one is allowed to create challenge templates through the client.
+      allow create: if false;
+
+      // No one is allowed to update challenge templates through the client.
+      allow update: if false;
+
+      // No one is allowed to delete challenge templates through the client.
+      allow delete: if false;
+    }
+
+    /**
+     * @description Enforces access control for user challenges, ensuring only the owning user can access them.
+     * @path /users/{userId}/userChallenges/{userChallengeId}
+     * @allow (create) - Authenticated user creates a challenge under their profile.
+     * @allow (get, update, delete) - Authenticated user accesses a challenge under their profile.
+     * @deny (create, get, update, delete) - Any other user attempts to access this challenge.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/userChallenges/{userChallengeId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isSignedIn() && isOwner(userId) && resource != null;
+      }
+
+      // Allow the user to read their own userChallenges
+      allow get: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to list their own userChallenges
+      allow list: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to create userChallenges, ensuring the userId matches the authenticated user's UID.
+      allow create: if isSignedIn() && isOwner(userId);
+
+      // Allow the user to update their own userChallenges
+      allow update: if isExistingOwner(userId);
+
+      // Allow the user to delete their own userChallenges
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
