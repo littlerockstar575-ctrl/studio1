@@ -27,6 +27,8 @@ const TEST_INTERVAL = 5; // Show test after every 5 challenges
 
 type ChallengeType = 'coding' | 'study' | 'other';
 
+const CODING_KEYWORDS = ["code", "python", "javascript", "java", "c++", "c#", "rust", "go", "typescript", "ruby", "swift", "kotlin", "php", "sql", "html", "css"];
+
 export function DailyChallengeCard() {
   const { goal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function DailyChallengeCard() {
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [pythonFact, setPythonFact] = useState<string | null>(null);
   const [isFactLoading, setIsFactLoading] = useState(false);
+  const [language, setLanguage] = useState('javascript');
 
 
   const fetchChallenge = useCallback(async () => {
@@ -55,10 +58,14 @@ export function DailyChallengeCard() {
     setPythonFact(null);
     
     // Determine challenge type
-    if (goal.toLowerCase().includes("code") || goal.toLowerCase().includes("python") || goal.toLowerCase().includes("javascript")) {
+    const goalLower = goal.toLowerCase();
+    const detectedLanguage = CODING_KEYWORDS.find(lang => goalLower.includes(lang));
+
+    if (detectedLanguage) {
         setChallengeType("coding");
-        setIsCompletable(true); // Coding challenges can be completed anytime
-    } else if (goal.toLowerCase().includes("study") || goal.toLowerCase().includes("read") || goal.toLowerCase().includes("learn")) {
+        setLanguage(detectedLanguage === 'code' ? 'javascript' : detectedLanguage); // default to js if generic "code"
+        setIsCompletable(true);
+    } else if (goalLower.includes("study") || goalLower.includes("read") || goalLower.includes("learn")) {
         setChallengeType("study");
         setTimer(CHALLENGE_DURATION_STUDY);
     } else {
@@ -83,6 +90,7 @@ export function DailyChallengeCard() {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
 
     const duration = challengeType === 'study' ? CHALLENGE_DURATION_STUDY : 10;
+    setIsCompletable(false); // Reset completable state when timer starts
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -102,6 +110,9 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
 
   const handleFetchFact = async () => {
+    // Only fetch python facts for python goals
+    if (language !== 'python') return;
+
     setIsFactLoading(true);
     const result = await getPythonFact();
     if (result.success) {
@@ -255,7 +266,7 @@ export function DailyChallengeCard() {
         <p className="text-xl md:text-2xl font-medium text-center text-foreground/90">{challenge}</p>
         {challengeType === 'coding' && (
             <div className="w-full">
-                <CodeEditor code={userCode} setCode={setUserCode} />
+                <CodeEditor code={userCode} setCode={setUserCode} language={language} />
             </div>
         )}
       </CardContent>
@@ -277,3 +288,5 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
+
+    

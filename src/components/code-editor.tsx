@@ -6,37 +6,44 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-csharp';
+import 'prismjs/components/prism-rust';
+import 'prismjs/components/prism-go';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-ruby';
+import 'prismjs/components/prism-swift';
+import 'prismjs/components/prism-kotlin';
+import 'prismjs/components/prism-php';
+import 'prismjs/components/prism-sql';
 import 'prismjs/themes/prism-tomorrow.css'; // Using prism-tomorrow theme
 
 interface CodeEditorProps {
     code: string;
     setCode: (code: string) => void;
+    language: string;
 }
 
-export function CodeEditor({ code, setCode }: CodeEditorProps) {
+export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
     const handleValueChange = (newCode: string) => {
-        // This is a simplified implementation for auto-closing brackets.
-        // It works when you type an opening bracket.
         const lastChar = newCode.length > code.length ? newCode[newCode.length - 1] : null;
         
-        const bracketMap: { [key: string]: string } = {
+        const pairMap: { [key: string]: string } = {
             '(': ')',
             '{': '}',
             '[': ']',
+            '"': '"',
+            "'": "'",
         };
 
-        if (lastChar && bracketMap[lastChar]) {
-            // A more robust solution would involve cursor position, but for now
-            // we will just append the closing bracket.
-            // This doesn't handle cursor placement well.
-            // A proper implementation would use the editor's instance to place the cursor between the brackets.
-            // `react-simple-code-editor` is very basic and doesn't expose the underlying textarea ref easily for this.
-            // So we will just append.
+        if (lastChar && pairMap[lastChar]) {
             const editor = document.querySelector('.prism-editor__textarea') as HTMLTextAreaElement;
             if (editor) {
                 const cursorPos = editor.selectionStart;
-                const codeWithBracket = newCode.slice(0, cursorPos) + bracketMap[lastChar] + newCode.slice(cursorPos);
-                setCode(codeWithBracket);
+                const codeWithPair = newCode.slice(0, cursorPos) + pairMap[lastChar] + newCode.slice(cursorPos);
+                setCode(codeWithPair);
                 
                 // HACK: We need to wait for react to re-render to set cursor position.
                 setTimeout(() => {
@@ -50,13 +57,17 @@ export function CodeEditor({ code, setCode }: CodeEditorProps) {
         setCode(newCode);
     };
 
+    const currentLanguage = languages[language] || languages.javascript;
+
     return (
         <Editor
             value={code}
             onValueChange={handleValueChange}
-            highlight={c => highlight(c, languages.javascript, 'javascript')}
+            highlight={c => highlight(c, currentLanguage, language)}
             padding={10}
             className="bg-card border rounded-md font-code text-sm min-h-[150px] focus-within:ring-2 focus-within:ring-ring"
         />
     );
 }
+
+    
