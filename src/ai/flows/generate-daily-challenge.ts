@@ -26,10 +26,8 @@ const prompt = ai.definePrompt({
 
   Your main priority is to ensure the user can build a successful habit. The challenges must be very easy at the beginning and gradually increase in difficulty.
 
-  Generate a single, achievable daily challenge that helps the user progress towards their goal.
-  
   The difficulty of the challenge MUST be based on the user's streak:
-  - Streak 0-3: Absolute beginner tasks. Focus on the most basic building blocks. For a coding goal, this means challenges like printing output, declaring and manipulating variables, and defining simple functions. The tasks should be single-concept and take less than 5 minutes.
+  - Streak 0-3: Absolute beginner tasks. Focus on the most basic building blocks. For a coding goal, this means challenges like printing output, declaring and manipulating variables, and defining simple functions. The tasks should be single-concept and take less than 5 minutes. DO NOT give challenges involving loops, file access, or complex data structures like lists/arrays or objects/dictionaries.
   - Streak 4-10: Beginner-friendly tasks that might combine two simple concepts, like using variables within a simple loop or conditional statement.
   - Streak 11-20: Intermediate tasks that are more involved and require problem-solving, like working with arrays/lists or basic data structures.
   - Streak 21+: Advanced tasks that require more effort and knowledge, like reading from files or interacting with simple data formats.
