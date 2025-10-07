@@ -36,3 +36,15 @@ export const GeneratePythonFactOutputSchema = z.object({
     fact: z.string().describe('An interesting fact about the Python programming language.'),
 });
 export type GeneratePythonFactOutput = z.infer<typeof GeneratePythonFactOutputSchema>;
+
+
+export const ClassifyGoalInputSchema = z.object({
+    goal: z.string().describe("The user's goal."),
+});
+export type ClassifyGoalInput = z.infer<typeof ClassifyGoalInputSchema>;
+
+export const ClassifyGoalOutputSchema = z.object({
+    type: z.enum(['coding', 'study', 'other']).describe("The classification of the user's goal."),
+    language: z.string().optional().describe("If the goal is 'coding', the programming language (e.g., 'python', 'javascript'). Use lowercase."),
+});
+export type ClassifyGoalOutput = z.infer<typeof ClassifyGoalOutputSchema>;

@@ -3,7 +3,8 @@
 import { generateDailyChallenge } from "@/ai/flows/generate-daily-challenge";
 import { generateTestQuestions } from "@/ai/flows/generate-test-questions";
 import { generatePythonFact } from "@/ai/flows/generate-python-fact";
-import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput } from "@/ai/schemas";
+import { classifyGoal } from "@/ai/flows/classify-goal";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
   const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
@@ -44,5 +45,21 @@ export async function getPythonFact(): Promise<{ success: string } | { failure: 
     } catch (error) {
         console.error(error);
         return { failure: "Failed to generate a fact. Please try again." };
+    }
+}
+
+export async function getClassifiedGoal(goal: string): Promise<{ success: ClassifyGoalOutput } | { failure: string }> {
+    const validatedInput = ClassifyGoalInputSchema.safeParse({ goal });
+
+    if (!validatedInput.success) {
+        return { failure: "Invalid input for classifying goal." };
+    }
+
+    try {
+        const result = await classifyGoal(validatedInput.data);
+        return { success: result };
+    } catch (error) {
+        console.error(error);
+        return { failure: "Failed to classify goal." };
     }
 }

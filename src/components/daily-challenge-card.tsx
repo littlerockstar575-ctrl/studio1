@@ -13,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge, getPythonFact } from "@/lib/actions";
+import { getDailyChallenge, getPythonFact, getClassifiedGoal } from "@/lib/actions";
 import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
@@ -21,13 +21,10 @@ import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
 import { TestModal } from "./test-modal";
 
 
-const CHALLENGE_DURATION_CODING = 60; // 60 seconds for coding challenge
 const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
 const TEST_INTERVAL = 5; // Show test after every 5 challenges
 
 type ChallengeType = 'coding' | 'study' | 'other';
-
-const CODING_KEYWORDS = ["code", "python", "javascript", "java", "c++", "c#", "rust", "go", "typescript", "ruby", "swift", "kotlin", "php", "sql", "html", "css"];
 
 export function DailyChallengeCard() {
   const { goal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
@@ -57,21 +54,27 @@ export function DailyChallengeCard() {
     setUserCode("// write your code here");
     setPythonFact(null);
     
-    // Determine challenge type
-    const goalLower = goal.toLowerCase();
-    const detectedLanguage = CODING_KEYWORDS.find(lang => goalLower.includes(lang));
+    // Use Gemini to classify the goal
+    const classificationResult = await getClassifiedGoal(goal);
 
-    if (detectedLanguage) {
-        setChallengeType("coding");
-        setLanguage(detectedLanguage === 'code' ? 'javascript' : detectedLanguage); // default to js if generic "code"
-        setIsCompletable(true);
-    } else if (goalLower.includes("study") || goalLower.includes("read") || goalLower.includes("learn")) {
-        setChallengeType("study");
-        setTimer(CHALLENGE_DURATION_STUDY);
+    if (classificationResult.success) {
+        const { type, language: detectedLanguage } = classificationResult.success;
+        setChallengeType(type);
+        if (type === 'coding') {
+            setLanguage(detectedLanguage || 'javascript');
+            setIsCompletable(true); // Coding challenges can be completed anytime
+        } else if (type === 'study') {
+            setTimer(CHALLENGE_DURATION_STUDY);
+        } else {
+            setTimer(10); // Default timer for 'other' tasks
+        }
     } else {
-        setChallengeType("other");
-        setTimer(10); // default 10 seconds for other goals
+        // Fallback or error handling
+        setError("Could not understand your goal. Please try rephrasing it in settings.");
+        setIsLoading(false);
+        return;
     }
+
 
     const result = await getDailyChallenge({ goal, completedChallenges });
     if (result.success) {
@@ -288,5 +291,3 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
-
-    
