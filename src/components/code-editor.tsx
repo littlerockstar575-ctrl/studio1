@@ -63,15 +63,20 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
             return '';
         }
         
-        const lang = language.toLowerCase();
+        const lang = language ? language.toLowerCase() : 'clike';
         const grammar = languages[lang];
 
-        if (grammar) {
-            return highlight(code, grammar, lang);
+        // If grammar not found, fallback gracefully to prevent crash
+        if (!grammar) {
+            return highlight(code, languages.clike, 'clike');
         }
-        
-        // Fallback to clike grammar if the language is not loaded to prevent crash.
-        return highlight(code, languages.clike, 'clike');
+
+        try {
+            return highlight(code, grammar, lang);
+        } catch (e) {
+            // In case of any unexpected error during highlighting, fallback
+            return code;
+        }
     };
 
     return (
