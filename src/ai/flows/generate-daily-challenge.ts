@@ -30,7 +30,8 @@ const prompt = ai.definePrompt({
   - Completed 0-3: Absolute beginner tasks. Focus on the most basic building blocks. For a coding goal, this means challenges like printing output, declaring and manipulating variables, and defining simple functions. The tasks should be single-concept and take less than 5 minutes. DO NOT give challenges involving loops, file access, or complex data structures like lists/arrays or objects/dictionaries.
   - Completed 4-10: Beginner-friendly tasks that might combine two simple concepts, like using variables within a simple loop or conditional statement.
   - Completed 11-20: Intermediate tasks that are more involved and require problem-solving, like working with arrays/lists or basic data structures.
-  - Completed 21+: Advanced tasks that require more effort and knowledge, like reading from files or interacting with simple data formats.
+  - Completed 21-29: Advanced tasks that require more effort and knowledge, like reading from files or interacting with simple data formats.
+  - Completed 30+: Library-focused tasks. Once a user has a solid grasp of the fundamentals, start introducing popular libraries relevant to their goal. For a 'Learn Python' goal, introduce libraries like 'requests' for API calls, 'pandas' for data manipulation, or 'os' for file system interaction. The challenges should be about using these libraries for simple tasks.
 
   For example, if the goal is 'Learn Python':
   - Completed 0: 'Print "Hello, GoalForge!" to the console.'
@@ -39,6 +40,7 @@ const prompt = ai.definePrompt({
   - Completed 5: 'Write a Python function that takes two numbers and returns their sum.'
   - Completed 15: 'Write a Python script that reads a text file and counts the number of words.'
   - Completed 25: 'Build a small command-line tool in Python that fetches weather data from a free API.'
+  - Completed 30: 'Use the Python 'requests' library to make a GET request to 'https://api.publicapis.org/entries' and print the total number of entries.'
 
   A bad challenge is something too complex for a beginner, like asking them to process a CSV file on day one. Keep it simple and foundational at the start.
   `,
