@@ -57,7 +57,7 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         setCode(newCode);
     };
 
-    const currentLanguage = languages[language] || languages.javascript;
+    const currentLanguage = languages[language] || languages.clike;
 
     return (
         <Editor
@@ -69,5 +69,3 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         />
     );
 }
-
-    
