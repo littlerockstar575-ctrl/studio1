@@ -4,26 +4,10 @@
  * @fileOverview A daily challenge generation AI agent.
  *
  * - generateDailyChallenge - A function that handles the daily challenge generation process.
- * - GenerateDailyChallengeInput - The input type for the generateDailyChallenge function.
- * - GenerateDailyChallengeOutput - The return type for the generateDailyChallenge function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const GenerateDailyChallengeInputSchema = z.object({
-  goal: z.string().describe('The user specified goal.'),
-});
-export type GenerateDailyChallengeInput = z.infer<
-  typeof GenerateDailyChallengeInputSchema
->;
-
-const GenerateDailyChallengeOutputSchema = z.object({
-  challenge: z.string().describe('The generated daily challenge. If the goal is about coding, this should be a simple problem statement, not just "write hello world".'),
-});
-export type GenerateDailyChallengeOutput = z.infer<
-  typeof GenerateDailyChallengeOutputSchema
->;
+import { GenerateDailyChallengeInputSchema, GenerateDailyChallengeOutputSchema, type GenerateDailyChallengeInput, type GenerateDailyChallengeOutput } from '@/ai/schemas';
 
 export async function generateDailyChallenge(
   input: GenerateDailyChallengeInput

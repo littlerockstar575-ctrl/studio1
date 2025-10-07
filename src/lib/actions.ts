@@ -1,15 +1,11 @@
 "use server";
 
 import { generateDailyChallenge } from "@/ai/flows/generate-daily-challenge";
-import { generateTestQuestions, GenerateTestQuestionsInputSchema, GenerateTestQuestionsOutput } from "@/ai/flows/generate-test-questions";
-import { z } from "zod";
-
-const dailyChallengeInputSchema = z.object({
-  goal: z.string(),
-});
+import { generateTestQuestions } from "@/ai/flows/generate-test-questions";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: { goal: string }) {
-  const validatedInput = dailyChallengeInputSchema.safeParse(input);
+  const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
 
   if (!validatedInput.success) {
     return { failure: "Invalid input" };

@@ -13,11 +13,11 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge, getTestQuestions } from "@/lib/actions";
+import { getDailyChallenge } from "@/lib/actions";
 import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
-import type { GenerateTestQuestionsOutput } from "@/ai/flows/generate-test-questions";
+import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
 import { TestModal } from "./test-modal";
 
 

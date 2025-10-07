@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getTestQuestions } from "@/lib/actions";
-import type { GenerateTestQuestionsOutput } from "@/ai/flows/generate-test-questions";
+import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
 import { Skeleton } from "./ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { cn } from "@/lib/utils";
