@@ -57,13 +57,21 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         setCode(newCode);
     };
 
-    const currentLanguageGrammar = languages[language] || languages.clike;
+    const highlightCode = (code: string) => {
+        const lang = language.toLowerCase();
+        // Check if the language grammar is loaded
+        if (languages[lang]) {
+            return highlight(code, languages[lang], lang);
+        }
+        // Fallback to clike grammar if the language is not loaded
+        return highlight(code, languages.clike, 'clike');
+    };
 
     return (
         <Editor
             value={code}
             onValueChange={handleValueChange}
-            highlight={c => highlight(c, currentLanguageGrammar, language)}
+            highlight={highlightCode}
             padding={10}
             className="bg-card border rounded-md font-code text-sm min-h-[150px] focus-within:ring-2 focus-within:ring-ring"
         />
