@@ -58,10 +58,16 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
     };
 
     const highlightCode = (code: string) => {
+        // Guard against undefined or null code, which causes Prism to crash.
+        if (typeof code !== 'string') {
+            return '';
+        }
+        
         const lang = language.toLowerCase();
-        // Check if the language grammar is loaded. If not, fallback to 'clike'.
-        if (languages[lang]) {
-            return highlight(code, languages[lang], lang);
+        const grammar = languages[lang];
+
+        if (grammar) {
+            return highlight(code, grammar, lang);
         }
         // Fallback to clike grammar if the language is not loaded to prevent crash.
         return highlight(code, languages.clike, 'clike');
