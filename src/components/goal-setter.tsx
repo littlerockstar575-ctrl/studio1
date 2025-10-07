@@ -79,7 +79,7 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
     <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-headline">
-          What Is Your Quest?
+          What is your goal
         </CardTitle>
         <CardDescription>
           Define your goal, and we'll forge a path to victory, one challenge at a time.
