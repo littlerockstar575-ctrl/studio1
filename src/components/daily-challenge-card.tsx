@@ -13,13 +13,16 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen } from "lucide-react";
+import { getDailyChallenge, getTestQuestions } from "@/lib/actions";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
+import type { GenerateTestQuestionsOutput } from "@/ai/flows/generate-test-questions";
+import { TestModal } from "./test-modal";
+
 
 const CHALLENGE_DURATION_CODING = 60; // 60 seconds for coding challenge
-const CHALLENGE_DURATION_STUDY = 15 * 60; // 15 minutes for study challenge
+const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
 
 type ChallengeType = 'coding' | 'study' | 'other';
 
@@ -34,6 +37,7 @@ export function DailyChallengeCard() {
   const [challengeType, setChallengeType] = useState<ChallengeType>('other');
   const [userCode, setUserCode] = useState("console.log('Hello, World!');");
   const [timer, setTimer] = useState(CHALLENGE_DURATION_STUDY);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
 
 
   const fetchChallenge = useCallback(async () => {
@@ -46,10 +50,10 @@ export function DailyChallengeCard() {
     setProgress(0);
     
     // Determine challenge type
-    if (goal.toLowerCase().includes("code") || goal.toLowerCase().includes("python")) {
+    if (goal.toLowerCase().includes("code") || goal.toLowerCase().includes("python") || goal.toLowerCase().includes("javascript")) {
         setChallengeType("coding");
         setTimer(CHALLENGE_DURATION_CODING);
-    } else if (goal.toLowerCase().includes("study") || goal.toLowerCase().includes("read")) {
+    } else if (goal.toLowerCase().includes("study") || goal.toLowerCase().includes("read") || goal.toLowerCase().includes("learn")) {
         setChallengeType("study");
         setTimer(CHALLENGE_DURATION_STUDY);
     } else {
@@ -98,13 +102,13 @@ export function DailyChallengeCard() {
   const handleComplete = () => {
     if (challengeType === 'coding') {
         // Dummy validation for now
-        if (userCode.includes("Hello, World!")) {
+        if (userCode.length > 20) { // Slightly harder check
             setIsCompleted(true);
             setCoins(c => c + 150); // More coins for coding challenge
             setStreak(s => s + 1);
-            toast({ title: "Correct!", description: "You've solved the challenge." });
+            toast({ title: "Challenge Done!", description: "You've submitted your code. Now, take a quick test!" });
         } else {
-            toast({ variant: 'destructive', title: "Incorrect Code", description: "Your code doesn't produce the correct output. Try again!" });
+            toast({ variant: 'destructive', title: "Not Quite", description: "Your code seems a bit short. Try to be more thorough!" });
         }
         return;
     }
@@ -118,6 +122,15 @@ export function DailyChallengeCard() {
   const handleNewChallenge = () => {
     fetchChallenge();
   };
+
+  const onTestFinish = (score: number) => {
+    const bonus = score * 50; // 50 coins per correct answer
+    setCoins(c => c + bonus);
+    toast({
+        title: "Test Complete!",
+        description: `You scored ${score} and earned a bonus of ${bonus} coins!`,
+    })
+  }
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -164,10 +177,24 @@ export function DailyChallengeCard() {
                 <PartyPopper className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
                 <p className="text-accent-foreground/80">You've earned {challengeType === 'coding' ? 150 : 100} coins and extended your streak!</p>
-                <Button onClick={handleNewChallenge}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Forge a New Challenge
-                </Button>
+                
+                <div className="flex gap-4 justify-center">
+                    <Button onClick={handleNewChallenge}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Forge a New Challenge
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsTestModalOpen(true)}>
+                        <BrainCircuit className="mr-2 h-4 w-4" /> Take a Test
+                    </Button>
+                </div>
             </CardContent>
+            {goal && (
+              <TestModal 
+                isOpen={isTestModalOpen} 
+                onOpenChange={setIsTestModalOpen}
+                topic={challengeType === 'coding' ? goal : undefined}
+                onTestFinish={onTestFinish}
+              />
+            )}
       </Card>
     );
   }

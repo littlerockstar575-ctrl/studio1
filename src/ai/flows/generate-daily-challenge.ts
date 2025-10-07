@@ -19,7 +19,7 @@ export type GenerateDailyChallengeInput = z.infer<
 >;
 
 const GenerateDailyChallengeOutputSchema = z.object({
-  challenge: z.string().describe('The generated daily challenge.'),
+  challenge: z.string().describe('The generated daily challenge. If the goal is about coding, this should be a simple problem statement, not just "write hello world".'),
 });
 export type GenerateDailyChallengeOutput = z.infer<
   typeof GenerateDailyChallengeOutputSchema
@@ -37,7 +37,9 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateDailyChallengeOutputSchema},
   prompt: `You are a personal assistant designed to generate daily challenges for users based on their goals.
 
-  Generate a single, achievable daily challenge that helps the user progress towards their goal.
+  Generate a single, achievable daily challenge that helps the user progress towards their goal. The challenge should be slightly more involved than a trivial task.
+
+  For example, if the goal is 'Learn Python', a good challenge is 'Write a Python function that takes a list of numbers and returns the sum.' A bad challenge is 'Write "Hello, World!" in Python'.
 
   Goal: {{{goal}}}
   `,

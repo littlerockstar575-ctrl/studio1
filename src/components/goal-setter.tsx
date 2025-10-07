@@ -66,7 +66,7 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
         />
         <Button type="submit" className="w-full">
           {isUpdate ? "Update Goal" : "Start My Journey"}
-        </Button>ika
+        </Button>
       </form>
     </Form>
   );
