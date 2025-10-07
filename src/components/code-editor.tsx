@@ -59,11 +59,11 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
 
     const highlightCode = (code: string) => {
         const lang = language.toLowerCase();
-        // Check if the language grammar is loaded
+        // Check if the language grammar is loaded. If not, fallback to 'clike'.
         if (languages[lang]) {
             return highlight(code, languages[lang], lang);
         }
-        // Fallback to clike grammar if the language is not loaded
+        // Fallback to clike grammar if the language is not loaded to prevent crash.
         return highlight(code, languages.clike, 'clike');
     };
 
