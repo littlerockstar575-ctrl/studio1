@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
 import { getDailyChallenge } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit } from "lucide-react";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
 import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
@@ -23,11 +23,12 @@ import { TestModal } from "./test-modal";
 
 const CHALLENGE_DURATION_CODING = 60; // 60 seconds for coding challenge
 const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
+const TEST_INTERVAL = 5; // Show test after every 5 challenges
 
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { goal, setCoins, setStreak } = useAppContext();
+  const { goal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,14 +63,14 @@ export function DailyChallengeCard() {
         setTimer(10); // default 10 seconds for other goals
     }
 
-    const result = await getDailyChallenge({ goal });
+    const result = await getDailyChallenge({ goal, streak });
     if (result.success) {
       setChallenge(result.success);
     } else {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [goal]);
+  }, [goal, streak]);
 
   useEffect(() => {
     fetchChallenge();
@@ -105,7 +106,8 @@ export function DailyChallengeCard() {
             setIsCompleted(true);
             setCoins(c => c + 150); // More coins for coding challenge
             setStreak(s => s + 1);
-            toast({ title: "Challenge Done!", description: "You've submitted your code. Now, take a quick test!" });
+            setCompletedChallenges(c => c + 1);
+            toast({ title: "Challenge Done!", description: "You've submitted your code." });
         } else {
             toast({ variant: 'destructive', title: "Not Quite", description: "Your code seems a bit short. Try to be more thorough!" });
         }
@@ -116,6 +118,7 @@ export function DailyChallengeCard() {
     setIsCompleted(true);
     setCoins(c => c + 100);
     setStreak(s => s + 1);
+    setCompletedChallenges(c => c + 1);
   };
 
   const handleNewChallenge = () => {
@@ -136,6 +139,10 @@ export function DailyChallengeCard() {
     const secs = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
+
+  const showTestButton = isCompleted && completedChallenges > 0 && completedChallenges % TEST_INTERVAL === 0;
+  const challengesUntilTest = TEST_INTERVAL - (completedChallenges % TEST_INTERVAL);
+
 
   if (isLoading) {
     return (
@@ -181,10 +188,18 @@ export function DailyChallengeCard() {
                     <Button onClick={handleNewChallenge}>
                         <RefreshCw className="mr-2 h-4 w-4" /> Forge a New Challenge
                     </Button>
-                    <Button variant="outline" onClick={() => setIsTestModalOpen(true)}>
-                        <BrainCircuit className="mr-2 h-4 w-4" /> Take a Test
-                    </Button>
+                    {showTestButton && (
+                      <Button variant="outline" onClick={() => setIsTestModalOpen(true)}>
+                          <BrainCircuit className="mr-2 h-4 w-4" /> Take a Test
+                      </Button>
+                    )}
                 </div>
+                 {!showTestButton && (
+                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>{challengesUntilTest} more challenge{challengesUntilTest > 1 ? 's' : ''} until the next test.</span>
+                    </div>
+                )}
             </CardContent>
             {goal && (
               <TestModal 

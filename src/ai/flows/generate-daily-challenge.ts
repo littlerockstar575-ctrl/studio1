@@ -19,13 +19,23 @@ const prompt = ai.definePrompt({
   name: 'generateDailyChallengePrompt',
   input: {schema: GenerateDailyChallengeInputSchema},
   output: {schema: GenerateDailyChallengeOutputSchema},
-  prompt: `You are a personal assistant designed to generate daily challenges for users based on their goals.
+  prompt: `You are a personal assistant designed to generate daily challenges for users based on their goals and progress.
 
-  Generate a single, achievable daily challenge that helps the user progress towards their goal. The challenge should be slightly more involved than a trivial task.
+  The user's current goal is: {{{goal}}}
+  The user's current streak is: {{{streak}}} days.
 
-  For example, if the goal is 'Learn Python', a good challenge is 'Write a Python function that takes a list of numbers and returns the sum.' A bad challenge is 'Write "Hello, World!" in Python'.
+  Generate a single, achievable daily challenge that helps the user progress towards their goal.
+  
+  The difficulty of the challenge should be based on the user's streak:
+  - Streak 0-7: Beginner-friendly tasks.
+  - Streak 8-20: Intermediate tasks that are more involved.
+  - Streak 21+: Advanced tasks that require more effort and knowledge.
 
-  Goal: {{{goal}}}
+  For example, if the goal is 'Learn Python':
+  - Low streak: 'Write a Python function that takes a list of numbers and returns the sum.'
+  - High streak: 'Build a small command-line tool in Python that fetches weather data from a free API.'
+
+  A bad challenge is something trivial like 'Write "Hello, World!" in Python'. Make the challenge meaningful.
   `,
 });
 

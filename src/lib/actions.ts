@@ -2,9 +2,9 @@
 
 import { generateDailyChallenge } from "@/ai/flows/generate-daily-challenge";
 import { generateTestQuestions } from "@/ai/flows/generate-test-questions";
-import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema } from "@/ai/schemas";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput } from "@/ai/schemas";
 
-export async function getDailyChallenge(input: { goal: string }) {
+export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
   const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
 
   if (!validatedInput.success) {

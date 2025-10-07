@@ -2,6 +2,7 @@ import {z} from 'genkit';
 
 export const GenerateDailyChallengeInputSchema = z.object({
   goal: z.string().describe('The user specified goal.'),
+  streak: z.number().describe('The user\'s current streak of completed challenges. Use this to adjust difficulty.'),
 });
 export type GenerateDailyChallengeInput = z.infer<
   typeof GenerateDailyChallengeInputSchema
