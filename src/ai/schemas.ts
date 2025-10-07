@@ -61,3 +61,15 @@ export const ValidateCodeOutputSchema = z.object({
     reason: z.string().describe("A brief, one-sentence explanation for why the code is considered valid or invalid. This will be shown to the user."),
 });
 export type ValidateCodeOutput = z.infer<typeof ValidateCodeOutputSchema>;
+
+
+export const GenerateCompletionThoughtInputSchema = z.object({
+    goal: z.string().describe("The user's main goal."),
+    challenge: z.string().describe("The specific challenge the user just completed."),
+});
+export type GenerateCompletionThoughtInput = z.infer<typeof GenerateCompletionThoughtInputSchema>;
+
+export const GenerateCompletionThoughtOutputSchema = z.object({
+    thought: z.string().describe("A short, motivational thought related to the completed challenge and goal."),
+});
+export type GenerateCompletionThoughtOutput = z.infer<typeof GenerateCompletionThoughtOutputSchema>;

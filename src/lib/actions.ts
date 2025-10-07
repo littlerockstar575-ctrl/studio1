@@ -5,7 +5,8 @@ import { generateTestQuestions } from "@/ai/flows/generate-test-questions";
 import { generatePythonFact } from "@/ai/flows/generate-python-fact";
 import { classifyGoal } from "@/ai/flows/classify-goal";
 import { validateCode as validateCodeFlow } from "@/ai/flows/validate-code";
-import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput } from "@/ai/schemas";
+import { generateCompletionThought as generateCompletionThoughtFlow } from "@/ai/flows/generate-completion-thought";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput, GenerateCompletionThoughtInputSchema, type GenerateCompletionThoughtInput, type GenerateCompletionThoughtOutput } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
   const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
@@ -78,5 +79,21 @@ export async function validateCode(input: ValidateCodeInput): Promise<{ success:
     } catch (error) {
         console.error(error);
         return { failure: "Failed to validate code." };
+    }
+}
+
+export async function getCompletionThought(input: GenerateCompletionThoughtInput): Promise<{ success: string } | { failure: string }> {
+    const validatedInput = GenerateCompletionThoughtInputSchema.safeParse(input);
+
+    if (!validatedInput.success) {
+        return { failure: "Invalid input for generating completion thought." };
+    }
+
+    try {
+        const result = await generateCompletionThoughtFlow(validatedInput.data);
+        return { success: result.thought };
+    } catch (error) {
+        console.error(error);
+        return { failure: "Failed to generate completion thought." };
     }
 }

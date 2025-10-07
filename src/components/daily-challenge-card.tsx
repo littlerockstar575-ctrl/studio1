@@ -14,7 +14,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode } from "@/lib/actions";
+import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode, getCompletionThought } from "@/lib/actions";
 import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2 } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
@@ -44,6 +44,8 @@ export function DailyChallengeCard() {
   const [isFactLoading, setIsFactLoading] = useState(false);
   const [language, setLanguage] = useState('javascript');
   const [placeholderCode, setPlaceholderCode] = useState("");
+  const [completionThought, setCompletionThought] = useState<string | null>(null);
+  const [isThoughtLoading, setIsThoughtLoading] = useState(false);
 
 
   const fetchChallenge = useCallback(async () => {
@@ -56,6 +58,7 @@ export function DailyChallengeCard() {
     setProgress(0);
     setUserCode("");
     setPythonFact(null);
+    setCompletionThought(null);
     
     const classificationResult = await getClassifiedGoal(goal);
 
@@ -133,10 +136,32 @@ export function DailyChallengeCard() {
     }
     setIsFactLoading(false);
   }
+  
+  const handleCompletion = async () => {
+    setIsCompleted(true);
+    const reward = challengeType === 'coding' ? 150 : 100;
+    setCoins(c => c + reward);
+    setStreak(s => s + 1);
+    setCompletedChallenges(c => c + 1);
+
+    if (challengeType === 'coding' && language === 'python') {
+        handleFetchFact();
+    }
+    
+    if (goal && challenge) {
+        setIsThoughtLoading(true);
+        const thoughtResult = await getCompletionThought({ goal, challenge });
+        if(thoughtResult.success) {
+            setCompletionThought(thoughtResult.success);
+        } else {
+            setCompletionThought("Every step forward is a victory.");
+        }
+        setIsThoughtLoading(false);
+    }
+  }
 
   const handleComplete = async () => {
     if (challengeType === 'coding') {
-        // Check if there is no code or if the code is just the initial placeholder
         if (!challenge || !userCode || userCode.trim() === "" || userCode.trim() === placeholderCode.trim()) {
              toast({ variant: 'destructive', title: "Not Quite", description: "Please write some code before submitting!" });
              return;
@@ -146,12 +171,8 @@ export function DailyChallengeCard() {
         setIsValidating(false);
 
         if (validationResult.success && validationResult.success.isValid) {
-            setIsCompleted(true);
-            setCoins(c => c + 150);
-            setStreak(s => s + 1);
-            setCompletedChallenges(c => c + 1);
             toast({ title: "Challenge Done!", description: "Great job! Your code was accepted." });
-            handleFetchFact();
+            handleCompletion();
         } else {
             toast({ variant: 'destructive', title: "Not Quite Right", description: validationResult.success?.reason || validationResult.failure || "Your code doesn't seem to solve the challenge. Please try again." });
         }
@@ -159,10 +180,7 @@ export function DailyChallengeCard() {
     }
 
     if (!isCompletable) return;
-    setIsCompleted(true);
-    setCoins(c => c + 100);
-    setStreak(s => s + 1);
-    setCompletedChallenges(c => c + 1);
+    handleCompletion();
   };
 
   const handleNewChallenge = () => {
@@ -184,7 +202,7 @@ export function DailyChallengeCard() {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
-  const showTestButton = isCompleted && completedChallenges > 0 && completedChallenges % TEST_INTERVAL === 0;
+  const showTestButton = completedChallenges > 0 && completedChallenges % TEST_INTERVAL === 0;
   const challengesUntilTest = TEST_INTERVAL - (completedChallenges % TEST_INTERVAL);
 
 
@@ -228,31 +246,32 @@ export function DailyChallengeCard() {
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
                 <p className="text-accent-foreground/80">You've earned {challengeType === 'coding' ? 150 : 100} coins and extended your streak!</p>
                 
-                {challengeType === 'coding' && pythonFact && (
+                {isThoughtLoading ? (
+                    <Skeleton className="h-6 w-3/4 mx-auto" />
+                ) : (
+                    completionThought && <p className="text-lg italic text-accent-foreground/90">"{completionThought}"</p>
+                )}
+
+                {challengeType === 'coding' && language === 'python' && pythonFact && (
                   <div className="p-4 bg-background/50 rounded-lg text-sm text-center italic space-y-3">
                     <div className="flex items-center justify-center gap-2 font-semibold">
                       <Lightbulb className="h-5 w-5 text-yellow-400" />
                       Python Fact
                     </div>
                     {isFactLoading ? <Skeleton className="h-5 w-full" /> : <p>"{pythonFact}"</p>}
-                    <Button onClick={handleFetchFact} size="sm" variant="ghost" disabled={isFactLoading}>
-                      <RefreshCw className={`mr-2 h-4 w-4 ${isFactLoading ? 'animate-spin' : ''}`} />
-                      Show Another Fact
-                    </Button>
                   </div>
                 )}
                 
-                <div className="flex gap-4 justify-center">
+                <div className="flex gap-4 justify-center pt-4">
                     <Button onClick={handleNewChallenge}>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Forge a New Challenge
+                        <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
                     </Button>
-                    {showTestButton && (
-                      <Button variant="outline" onClick={() => setIsTestModalOpen(true)}>
-                          <BrainCircuit className="mr-2 h-4 w-4" /> Take a Test
-                      </Button>
-                    )}
                 </div>
-                 {!showTestButton && (
+                 {showTestButton ? (
+                     <Button variant="outline" onClick={() => setIsTestModalOpen(true)} className="mt-2">
+                        <BrainCircuit className="mr-2 h-4 w-4" /> Take a Bonus Test
+                    </Button>
+                ) : (
                     <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
                         <ShieldCheck className="h-4 w-4" />
                         <span>{challengesUntilTest} more challenge{challengesUntilTest > 1 ? 's' : ''} until the next test.</span>
@@ -285,7 +304,7 @@ export function DailyChallengeCard() {
         <p className="text-xl md:text-2xl font-medium text-center text-foreground/90">{challenge}</p>
         {challengeType === 'coding' && (
             <div className="w-full">
-                <CodeEditor code={userCode} setCode={setUserCode} language={language} />
+                 <CodeEditor code={userCode} setCode={setUserCode} language={language} />
             </div>
         )}
       </CardContent>
@@ -308,5 +327,3 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
-
-    
