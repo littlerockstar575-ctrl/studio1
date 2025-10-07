@@ -13,8 +13,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge, getPythonFact, getClassifiedGoal } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb } from "lucide-react";
+import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode } from "@/lib/actions";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2 } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
 import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
@@ -30,12 +30,13 @@ export function DailyChallengeCard() {
   const { goal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isCompletable, setIsCompletable] = useState(false);
   const [progress, setProgress] = useState(0);
   const [challengeType, setChallengeType] = useState<ChallengeType>('other');
-  const [userCode, setUserCode] = useState("// write your code here");
+  const [userCode, setUserCode] = useState("");
   const [timer, setTimer] = useState(CHALLENGE_DURATION_STUDY);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [pythonFact, setPythonFact] = useState<string | null>(null);
@@ -51,30 +52,34 @@ export function DailyChallengeCard() {
     setIsCompleted(false);
     setIsCompletable(false);
     setProgress(0);
-    setUserCode("// write your code here");
+    setUserCode("");
     setPythonFact(null);
     
-    // Use Gemini to classify the goal
     const classificationResult = await getClassifiedGoal(goal);
 
+    let type: ChallengeType = 'other';
+    let detectedLanguage: string | undefined;
+
     if (classificationResult.success) {
-        const { type, language: detectedLanguage } = classificationResult.success;
-        setChallengeType(type);
-        if (type === 'coding') {
-            setLanguage(detectedLanguage || 'javascript');
-            setIsCompletable(true); // Coding challenges can be completed anytime
-        } else if (type === 'study') {
-            setTimer(CHALLENGE_DURATION_STUDY);
-        } else {
-            setTimer(10); // Default timer for 'other' tasks
-        }
+        type = classificationResult.success.type;
+        detectedLanguage = classificationResult.success.language;
     } else {
-        // Fallback or error handling
         setError("Could not understand your goal. Please try rephrasing it in settings.");
         setIsLoading(false);
         return;
     }
 
+    setChallengeType(type);
+    if (type === 'coding') {
+        const lang = detectedLanguage || 'javascript';
+        setLanguage(lang);
+        setUserCode(`// write your ${lang} code here`);
+        setIsCompletable(true);
+    } else if (type === 'study') {
+        setTimer(CHALLENGE_DURATION_STUDY);
+    } else {
+        setTimer(10); 
+    }
 
     const result = await getDailyChallenge({ goal, completedChallenges });
     if (result.success) {
@@ -93,7 +98,7 @@ export function DailyChallengeCard() {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
 
     const duration = challengeType === 'study' ? CHALLENGE_DURATION_STUDY : 10;
-    setIsCompletable(false); // Reset completable state when timer starts
+    setIsCompletable(false);
 
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -113,7 +118,6 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
 
   const handleFetchFact = async () => {
-    // Only fetch python facts for python goals
     if (language !== 'python') return;
 
     setIsFactLoading(true);
@@ -126,18 +130,25 @@ export function DailyChallengeCard() {
     setIsFactLoading(false);
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (challengeType === 'coding') {
-        // Dummy validation for now
-        if (userCode.length > 20 && userCode !== "// write your code here") { // Slightly harder check
+        if (!challenge || !userCode || userCode.startsWith('//')) {
+             toast({ variant: 'destructive', title: "Not Quite", description: "Please write some code before submitting!" });
+             return;
+        }
+        setIsValidating(true);
+        const validationResult = await validateCode({ challenge, code: userCode, language });
+        setIsValidating(false);
+
+        if (validationResult.success && validationResult.success.isValid) {
             setIsCompleted(true);
-            setCoins(c => c + 150); // More coins for coding challenge
+            setCoins(c => c + 150);
             setStreak(s => s + 1);
             setCompletedChallenges(c => c + 1);
-            toast({ title: "Challenge Done!", description: "You've submitted your code." });
+            toast({ title: "Challenge Done!", description: "Great job! Your code was accepted." });
             handleFetchFact();
         } else {
-            toast({ variant: 'destructive', title: "Not Quite", description: "Your code seems a bit short. Try to be more thorough!" });
+            toast({ variant: 'destructive', title: "Not Quite Right", description: validationResult.success?.reason || validationResult.failure || "Your code doesn't seem to solve the challenge. Please try again." });
         }
         return;
     }
@@ -154,7 +165,7 @@ export function DailyChallengeCard() {
   };
 
   const onTestFinish = (score: number) => {
-    const bonus = score * 50; // 50 coins per correct answer
+    const bonus = score * 50; 
     setCoins(c => c + bonus);
     toast({
         title: "Test Complete!",
@@ -284,8 +295,9 @@ export function DailyChallengeCard() {
                 </p>
             </div>
         )}
-        <Button onClick={handleComplete} disabled={!isCompletable} size="lg" className="w-full">
-          {challengeType === 'coding' ? "Submit Code" : "Complete Challenge"}
+        <Button onClick={handleComplete} disabled={!isCompletable || isValidating} size="lg" className="w-full">
+          {isValidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isValidating ? 'Validating...' : (challengeType === 'coding' ? "Submit Code" : "Complete Challenge")}
         </Button>
       </CardFooter>
     </Card>

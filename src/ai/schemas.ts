@@ -48,3 +48,16 @@ export const ClassifyGoalOutputSchema = z.object({
     language: z.string().optional().describe("If the goal is 'coding', the programming language (e.g., 'python', 'javascript'). Use lowercase."),
 });
 export type ClassifyGoalOutput = z.infer<typeof ClassifyGoalOutputSchema>;
+
+export const ValidateCodeInputSchema = z.object({
+    challenge: z.string().describe("The programming challenge that was given to the user."),
+    code: z.string().describe("The code written by the user to solve the challenge."),
+    language: z.string().describe("The programming language the code is written in (e.g., 'python', 'javascript')."),
+});
+export type ValidateCodeInput = z.infer<typeof ValidateCodeInputSchema>;
+
+export const ValidateCodeOutputSchema = z.object({
+    isValid: z.boolean().describe("Whether the code is a valid and reasonable attempt to solve the challenge."),
+    reason: z.string().describe("A brief, one-sentence explanation for why the code is considered valid or invalid. This will be shown to the user."),
+});
+export type ValidateCodeOutput = z.infer<typeof ValidateCodeOutputSchema>;

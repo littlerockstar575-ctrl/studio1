@@ -3,8 +3,10 @@
 import React from 'react';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
+
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
@@ -12,13 +14,12 @@ import 'prismjs/components/prism-cpp';
 import 'prismjs/components/prism-csharp';
 import 'prismjs/components/prism-rust';
 import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-ruby';
 import 'prismjs/components/prism-swift';
 import 'prismjs/components/prism-kotlin';
 import 'prismjs/components/prism-php';
 import 'prismjs/components/prism-sql';
-import 'prismjs/themes/prism-tomorrow.css'; // Using prism-tomorrow theme
+import 'prismjs/themes/prism-okaidia.css'; 
 
 interface CodeEditorProps {
     code: string;
@@ -45,7 +46,6 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
                 const codeWithPair = newCode.slice(0, cursorPos) + pairMap[lastChar] + newCode.slice(cursorPos);
                 setCode(codeWithPair);
                 
-                // HACK: We need to wait for react to re-render to set cursor position.
                 setTimeout(() => {
                     editor.selectionStart = cursorPos;
                     editor.selectionEnd = cursorPos;
@@ -58,7 +58,6 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
     };
 
     const highlightCode = (code: string) => {
-        // Defensive guard: ensure valid input to prevent crashes.
         if (typeof code !== 'string') {
             return '';
         }
@@ -66,7 +65,6 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         const lang = language ? language.toLowerCase() : 'clike';
         const grammar = languages[lang];
 
-        // If grammar not found, fallback gracefully to prevent crash
         if (!grammar) {
             return highlight(code, languages.clike, 'clike');
         }
@@ -74,7 +72,7 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         try {
             return highlight(code, grammar, lang);
         } catch (e) {
-            // In case of any unexpected error during highlighting, fallback
+            console.error("Syntax highlighting failed:", e);
             return code;
         }
     };
@@ -85,7 +83,7 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
             onValueChange={handleValueChange}
             highlight={highlightCode}
             padding={10}
-            className="bg-card border rounded-md font-code text-sm min-h-[150px] focus-within:ring-2 focus-within:ring-ring"
+            className="bg-[#272822] text-white border rounded-md font-code text-sm min-h-[150px] focus-within:ring-2 focus-within:ring-ring"
         />
     );
 }
