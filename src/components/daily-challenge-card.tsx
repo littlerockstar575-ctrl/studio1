@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -42,6 +43,7 @@ export function DailyChallengeCard() {
   const [pythonFact, setPythonFact] = useState<string | null>(null);
   const [isFactLoading, setIsFactLoading] = useState(false);
   const [language, setLanguage] = useState('javascript');
+  const [placeholderCode, setPlaceholderCode] = useState("");
 
 
   const fetchChallenge = useCallback(async () => {
@@ -72,8 +74,10 @@ export function DailyChallengeCard() {
     setChallengeType(type);
     if (type === 'coding') {
         const lang = detectedLanguage || 'javascript';
+        const placeholder = `// write your ${lang} code here`;
         setLanguage(lang);
-        setUserCode(`// write your ${lang} code here`);
+        setUserCode(placeholder);
+        setPlaceholderCode(placeholder);
         setIsCompletable(true);
     } else if (type === 'study') {
         setTimer(CHALLENGE_DURATION_STUDY);
@@ -132,7 +136,8 @@ export function DailyChallengeCard() {
 
   const handleComplete = async () => {
     if (challengeType === 'coding') {
-        if (!challenge || !userCode || userCode.startsWith('//')) {
+        // Check if there is no code or if the code is just the initial placeholder
+        if (!challenge || !userCode || userCode.trim() === "" || userCode.trim() === placeholderCode.trim()) {
              toast({ variant: 'destructive', title: "Not Quite", description: "Please write some code before submitting!" });
              return;
         }
@@ -303,3 +308,5 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
+
+    
