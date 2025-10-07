@@ -63,14 +63,14 @@ export function DailyChallengeCard() {
         setTimer(10); // default 10 seconds for other goals
     }
 
-    const result = await getDailyChallenge({ goal, streak });
+    const result = await getDailyChallenge({ goal, completedChallenges });
     if (result.success) {
       setChallenge(result.success);
     } else {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [goal, streak]);
+  }, [goal, completedChallenges]);
 
   useEffect(() => {
     fetchChallenge();
