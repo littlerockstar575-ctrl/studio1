@@ -58,7 +58,7 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
     };
 
     const highlightCode = (code: string) => {
-        // Guard against undefined or null code, which causes Prism to crash.
+        // Defensive guard: ensure valid input to prevent crashes.
         if (typeof code !== 'string') {
             return '';
         }
@@ -69,6 +69,7 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         if (grammar) {
             return highlight(code, grammar, lang);
         }
+        
         // Fallback to clike grammar if the language is not loaded to prevent crash.
         return highlight(code, languages.clike, 'clike');
     };
