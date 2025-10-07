@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "badge1",
+      "description": "A bronze medal for a 7-day streak.",
+      "imageUrl": "https://images.unsplash.com/photo-1759688983881-0742f416a4b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxicm9uemUlMjBtZWRhbHxlbnwwfHx8fDE3NTk3NzU1NTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bronze medal"
+    },
+    {
+      "id": "badge2",
+      "description": "A silver medal for a 14-day streak.",
+      "imageUrl": "https://images.unsplash.com/photo-1613825787346-ef9c6189774b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c2lsdmVyJTIwbWVkYWx8ZW58MHx8fHwxNzU5NzMxNjg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "silver medal"
+    },
+    {
+      "id": "badge3",
+      "description": "A gold medal for a 30-day streak.",
+      "imageUrl": "https://picsum.photos/seed/badge3/200/200",
+      "imageHint": "gold medal"
+    },
+    {
+      "id": "badge4",
+      "description": "A footprint icon for completing the first challenge.",
+      "imageUrl": "https://picsum.photos/seed/badge4/200/200",
+      "imageHint": "footprint icon"
+    },
+    {
+      "id": "badge5",
+      "description": "A target icon for setting a goal.",
+      "imageUrl": "https://images.unsplash.com/photo-1730817403166-36f03bec781a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dGFyZ2V0JTIwaWNvbnxlbnwwfHx8fDE3NTk3NjYwNTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "target icon"
+    },
+    {
+      "id": "badge6",
+      "description": "A high-five icon for earning 500 coins.",
+      "imageUrl": "https://picsum.photos/seed/badge6/200/200",
+      "imageHint": "high five"
+    },
+    {
+      "id": "badge7",
+      "description": "A bag of money for earning 1000 coins.",
+      "imageUrl": "https://picsum.photos/seed/badge7/200/200",
+      "imageHint": "money bag"
+    },
+    {
+      "id": "badge8",
+      "description": "A number 100 icon for completing 100 challenges.",
+      "imageUrl": "https://picsum.photos/seed/badge8/200/200",
+      "imageHint": "number 100"
+    }
+  ]
 }
