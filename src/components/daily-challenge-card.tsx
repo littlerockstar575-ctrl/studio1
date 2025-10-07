@@ -35,7 +35,7 @@ export function DailyChallengeCard() {
   const [isCompletable, setIsCompletable] = useState(false);
   const [progress, setProgress] = useState(0);
   const [challengeType, setChallengeType] = useState<ChallengeType>('other');
-  const [userCode, setUserCode] = useState("console.log('Hello, World!');");
+  const [userCode, setUserCode] = useState("// write your code here");
   const [timer, setTimer] = useState(CHALLENGE_DURATION_STUDY);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
 
@@ -48,11 +48,12 @@ export function DailyChallengeCard() {
     setIsCompleted(false);
     setIsCompletable(false);
     setProgress(0);
+    setUserCode("// write your code here");
     
     // Determine challenge type
     if (goal.toLowerCase().includes("code") || goal.toLowerCase().includes("python") || goal.toLowerCase().includes("javascript")) {
         setChallengeType("coding");
-        setTimer(CHALLENGE_DURATION_CODING);
+        setIsCompletable(true); // Coding challenges can be completed anytime
     } else if (goal.toLowerCase().includes("study") || goal.toLowerCase().includes("read") || goal.toLowerCase().includes("learn")) {
         setChallengeType("study");
         setTimer(CHALLENGE_DURATION_STUDY);
@@ -75,17 +76,15 @@ export function DailyChallengeCard() {
   }, [fetchChallenge]);
   
   useEffect(() => {
-    if (isLoading || isCompleted || !challenge) return;
+    if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
 
-    const duration = challengeType === 'study' ? CHALLENGE_DURATION_STUDY : (challengeType === 'coding' ? CHALLENGE_DURATION_CODING : 10);
+    const duration = challengeType === 'study' ? CHALLENGE_DURATION_STUDY : 10;
 
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          if (challengeType !== 'coding') {
-            setIsCompletable(true);
-          }
+          setIsCompletable(true);
           return 100;
         }
         return prev + 100 / duration;
@@ -102,7 +101,7 @@ export function DailyChallengeCard() {
   const handleComplete = () => {
     if (challengeType === 'coding') {
         // Dummy validation for now
-        if (userCode.length > 20) { // Slightly harder check
+        if (userCode.length > 20 && userCode !== "// write your code here") { // Slightly harder check
             setIsCompleted(true);
             setCoins(c => c + 150); // More coins for coding challenge
             setStreak(s => s + 1);
@@ -218,15 +217,17 @@ export function DailyChallengeCard() {
         )}
       </CardContent>
       <CardFooter className="flex-col gap-4">
-        <div className="w-full space-y-2">
-            <Progress value={progress} />
-            <p className="text-sm text-center text-muted-foreground">
-                {challengeType === 'study' ? `Time remaining: ${formatTime(timer)}` : 
-                (challengeType === 'coding' ? (progress < 100 ? "Solve the problem" : "Submit your solution") : (isCompletable ? "Ready to complete!" : `Challenge unlocks in ${Math.max(0, 10 - Math.floor(progress / 10))}s`))
-                }
-            </p>
-        </div>
-        <Button onClick={handleComplete} disabled={challengeType !== 'coding' && !isCompletable} size="lg" className="w-full">
+        {challengeType !== 'coding' && (
+            <div className="w-full space-y-2">
+                <Progress value={progress} />
+                <p className="text-sm text-center text-muted-foreground">
+                    {challengeType === 'study' ? `Time remaining: ${formatTime(timer)}` : 
+                    (isCompletable ? "Ready to complete!" : `Challenge unlocks in ${Math.max(0, 10 - Math.floor(progress / 10))}s`)
+                    }
+                </p>
+            </div>
+        )}
+        <Button onClick={handleComplete} disabled={!isCompletable} size="lg" className="w-full">
           {challengeType === 'coding' ? "Submit Code" : "Complete Challenge"}
         </Button>
       </CardFooter>
