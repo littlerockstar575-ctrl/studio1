@@ -70,3 +70,8 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* For react-simple-code-editor */
+.prism-editor__textarea:focus {
+  outline: none;
+}
