@@ -57,13 +57,13 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         setCode(newCode);
     };
 
-    const currentLanguage = languages[language] || languages.clike;
+    const currentLanguageGrammar = languages[language] || languages.clike;
 
     return (
         <Editor
             value={code}
             onValueChange={handleValueChange}
-            highlight={c => highlight(c, currentLanguage, language)}
+            highlight={c => highlight(c, currentLanguageGrammar, language)}
             padding={10}
             className="bg-card border rounded-md font-code text-sm min-h-[150px] focus-within:ring-2 focus-within:ring-ring"
         />
