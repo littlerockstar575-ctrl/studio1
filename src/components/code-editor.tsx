@@ -57,25 +57,28 @@ export function CodeEditor({ code, setCode, language }: CodeEditorProps) {
         setCode(newCode);
     };
 
-    const highlightCode = (code: string) => {
-        if (typeof code !== 'string') {
-            return '';
-        }
-        
+    const highlightCode = (codeToHighlight: string) => {
         const lang = language ? language.toLowerCase() : 'clike';
         const grammar = languages[lang];
 
         if (!grammar) {
-            return highlight(code, languages.clike, 'clike');
+            // Fallback to clike grammar if the language is not loaded to prevent crash.
+             return highlight(codeToHighlight, languages.clike, 'clike');
         }
 
         try {
-            return highlight(code, grammar, lang);
+            return highlight(codeToHighlight, grammar, lang);
         } catch (e) {
             console.error("Syntax highlighting failed:", e);
-            return code;
+            // Fallback to plain text on any unexpected error.
+            return codeToHighlight;
         }
     };
+
+    // Prevent rendering the editor until the code and language are available to avoid race conditions.
+    if (typeof code !== 'string' || !language) {
+        return null;
+    }
 
     return (
         <Editor
