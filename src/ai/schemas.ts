@@ -1,8 +1,10 @@
+
 import {z} from 'genkit';
 
 export const GenerateDailyChallengeInputSchema = z.object({
   goal: z.string().describe('The user specified goal.'),
-  completedChallenges: z.number().describe('The number of challenges the user has completed. Use this to adjust difficulty.'),
+  difficulty: z.string().describe("The user-selected difficulty: 'Beginner', 'Intermediate', 'Advanced', 'Hacker', or 'Godly'"),
+  completedChallenges: z.number().describe('The number of challenges the user has completed. Use this to adjust difficulty within the selected difficulty tier.'),
 });
 export type GenerateDailyChallengeInput = z.infer<
   typeof GenerateDailyChallengeInputSchema

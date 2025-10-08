@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useAppContext } from "@/contexts/app-context";
+import { useAppContext, Goal } from "@/contexts/app-context";
 import { GoalSetter } from "@/components/goal-setter";
 import { DailyChallengeCard } from "@/components/daily-challenge-card";
 import { Flame, Coins, PlusCircle, Trash2, Star } from "lucide-react";
@@ -27,19 +27,32 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const { activeGoal, goals, setActiveGoal, setGoals, coins, streak } = useAppContext();
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
 
 
-  const removeGoal = (goalToRemove: string) => {
-    setGoals(goals.filter(g => g !== goalToRemove));
-    if (activeGoal === goalToRemove) {
-      const newActiveGoal = goals.filter(g => g !== goalToRemove)[0] || null;
+  const removeGoal = (goalToRemove: Goal) => {
+    setGoals(goals.filter(g => g.description !== goalToRemove.description));
+    if (activeGoal?.description === goalToRemove.description) {
+      const newActiveGoal = goals.filter(g => g.description !== goalToRemove.description)[0] || null;
       setActiveGoal(newActiveGoal);
     }
   };
+  
+  const getDifficultyBadge = (difficulty: Goal['difficulty']) => {
+    switch (difficulty) {
+        case 'Beginner': return <Badge variant="secondary">🥲 {difficulty}</Badge>;
+        case 'Intermediate': return <Badge variant="secondary" className="bg-blue-100 text-blue-800">🧐 {difficulty}</Badge>;
+        case 'Advanced': return <Badge variant="secondary" className="bg-purple-100 text-purple-800">🤓 {difficulty}</Badge>;
+        case 'Hacker': return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">😎 {difficulty}</Badge>;
+        case 'Godly': return <Badge variant="destructive">🤯 {difficulty}</Badge>;
+        default: return <Badge variant="outline">{difficulty}</Badge>;
+    }
+  }
+
 
   return (
     <>
@@ -76,15 +89,18 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                        {goals.map(goal => (
-                            <div key={goal} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                                <p className="font-medium text-sm flex-1 pr-2">{goal}</p>
+                            <div key={goal.description} className="flex items-start justify-between p-3 rounded-lg bg-muted/50">
+                                <div className="flex flex-col gap-2">
+                                  <p className="font-medium text-sm flex-1 pr-2">{goal.description}</p>
+                                  {getDifficultyBadge(goal.difficulty)}
+                                </div>
                                 <div className="flex items-center gap-1">
                                     <Button 
-                                        variant={activeGoal === goal ? "default" : "outline"} 
+                                        variant={activeGoal?.description === goal.description ? "default" : "outline"} 
                                         size="icon"
                                         className="h-8 w-8"
                                         onClick={() => setActiveGoal(goal)}
-                                        disabled={activeGoal === goal}
+                                        disabled={activeGoal?.description === goal.description}
                                     >
                                         <Star className="w-4 h-4" />
                                     </Button>

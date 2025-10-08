@@ -20,39 +20,31 @@ const prompt = ai.definePrompt({
   name: 'generateDailyChallengePrompt',
   input: {schema: GenerateDailyChallengeInputSchema},
   output: {schema: GenerateDailyChallengeOutputSchema},
-  prompt: `You are a personal assistant designed to generate daily challenges for users based on their goals and progress.
+  prompt: `You are a personal assistant designed to generate daily challenges for users based on their goals, a chosen difficulty level, and their progress.
 
   The user's current goal is: {{{goal}}}
+  The user has chosen the difficulty: {{{difficulty}}}
   The user has completed: {{{completedChallenges}}} challenges.
 
-  Your main priority is to ensure the user can build a successful habit. The challenges must be very easy at the beginning and gradually increase in difficulty.
+  Your main priority is to create a challenge that matches the user's chosen difficulty level. The number of completed challenges should be used for gradual progression *within* that difficulty tier.
 
-  **First, analyze the user's goal for keywords like "beginner", "intermediate", or "advanced". If these keywords are present, they should take precedence over the number of completed challenges.** For example, if the goal is "Learn advanced Python" and completed challenges is 0, you should generate an advanced challenge, not a beginner one.
+  - **Beginner**: These are for absolute beginners. The very first challenges (0-3) should be extremely simple "hello world" style tasks. For coding, this means printing output, declaring variables, or writing a basic function.
+  - **Intermediate**: Assume the user knows the basics. Challenges should combine concepts, like loops with conditionals, or working with basic data structures like arrays/lists and objects/dictionaries.
+  - **Advanced**: These users are comfortable with the core language. Give them challenges that involve more complex problem-solving, reading/writing files, or interacting with simple data formats like JSON.
+  - **Hacker**: This level is for experienced users. Challenges should involve using popular libraries, making API calls, or solving algorithmic problems.
+  - **Godly**: For experts looking for a serious test. Challenges could involve performance optimization, advanced data structures, concurrency, or architectural design patterns.
 
-  If no skill level is specified in the goal, use the number of completed challenges to determine the difficulty:
-  - Completed 0-3: Absolute beginner tasks. Focus on the most basic building blocks. For a coding goal, this means challenges like printing output, declaring and manipulating variables, and defining simple functions. The tasks should be single-concept and take less than 5 minutes. DO NOT give challenges involving loops, file access, or complex data structures like lists/arrays or objects/dictionaries.
-  - Completed 4-10: Beginner-friendly tasks that might combine two simple concepts, like using variables within a simple loop or conditional statement.
-  - Completed 11-20: Intermediate tasks that are more involved and require problem-solving, like working with arrays/lists or basic data structures.
-  - Completed 21-29: Advanced tasks that require more effort and knowledge, like reading from files or interacting with simple data formats.
-  - Completed 30+: Library-focused tasks. Once a user has a solid grasp of the fundamentals, start introducing popular libraries relevant to their goal. For a 'Learn Python' goal, introduce libraries like 'requests' for API calls, 'pandas' for data manipulation, or 'os' for file system interaction. For a 'Learn JavaScript' goal, you could introduce 'axios' for API calls, 'lodash' for utility functions, or how to use the built-in 'fs' module in Node.js. The challenges should be about using these libraries for simple tasks.
+  Use the 'completedChallenges' number to create a smooth learning curve *within* the chosen difficulty. For example, an Intermediate user with 0 completed challenges should get an easier Intermediate task than one with 10 completed challenges.
 
-  Example for 'Learn Python':
-  - Completed 0: 'Print "Hello, GoalForge!" to the console.'
-  - Completed 1: 'Declare a variable named "age" and assign your age to it. Then print the variable.'
-  - Completed 2: 'Write a function called "greet" that takes a name as an argument and prints "Hello, [name]".'
-  - Completed 5: 'Write a Python function that takes two numbers and returns their sum.'
-  - Completed 15: 'Write a Python script that reads a text file and counts the number of words.'
-  - Completed 30: 'Use the Python 'requests' library to make a GET request to 'https://api.publicapis.org/entries' and print the total number of entries.'
+  Example for 'Learn Python', Difficulty 'Intermediate':
+  - Completed 0: 'Write a function that takes a list of numbers and returns a new list with only the even numbers.'
+  - Completed 10: 'Write a script that reads a simple JSON file containing a list of users and prints their names.'
 
-  Example for 'Learn JavaScript':
+  Example for 'Learn JavaScript', Difficulty 'Beginner':
   - Completed 0: 'Use console.log() to print "Hello, GoalForge!"'
-  - Completed 1: 'Declare a const variable named "favoriteFood" and assign your favorite food to it. Then print it.'
-  - Completed 2: 'Write a function called "sayHello" that takes a name and logs "Hello, [name]" to the console.'
-  - Completed 5: 'Write a JavaScript function that uses a for loop to print numbers from 1 to 5.'
-  - Completed 15: 'Write a function that accepts an array of numbers and returns a new array with only the even numbers.'
-  - Completed 30: 'Using Node.js, use the built-in 'fs' module to read the contents of a text file and print it to the console.'
+  - Completed 5: 'Write a function that uses a for loop to print numbers from 1 to 10.'
 
-  A bad challenge is something too complex for a beginner, like asking them to process a CSV file on day one. Keep it simple and foundational at the start.
+  A bad challenge is one that doesn't match the selected difficulty. Do not give a 'Beginner' an API challenge. Do not give a 'Hacker' a "declare a variable" challenge.
   `,
 });
 

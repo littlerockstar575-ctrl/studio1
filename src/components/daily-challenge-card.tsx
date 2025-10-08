@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -59,7 +60,7 @@ export function DailyChallengeCard() {
     setCompletionThought(null);
     setIsCompletable(false);
     
-    const classificationResult = await getClassifiedGoal(activeGoal);
+    const classificationResult = await getClassifiedGoal(activeGoal.description);
 
     let type: ChallengeType = 'other';
     let detectedLanguage: string | undefined;
@@ -87,7 +88,7 @@ export function DailyChallengeCard() {
         setTimer(10); 
     }
 
-    const result = await getDailyChallenge({ goal: activeGoal, completedChallenges });
+    const result = await getDailyChallenge({ goal: activeGoal.description, difficulty: activeGoal.difficulty, completedChallenges });
     if (result.success) {
       setChallenge(result.success);
     } else {
@@ -123,7 +124,7 @@ export function DailyChallengeCard() {
     return () => clearInterval(interval);
   }, [isLoading, isCompleted, challenge, challengeType]);
   
-  const handleCompletion = async () => {
+  const handleCompletion = useCallback(async () => {
     const reward = challengeType === 'coding' ? 150 : 100;
     setCoins(c => c + reward);
     setStreak(s => s + 1);
@@ -135,11 +136,13 @@ export function DailyChallengeCard() {
     const promises = [];
 
     if (activeGoal && challenge) {
-        promises.push(getCompletionThought({ goal: activeGoal, challenge }));
+        promises.push(getCompletionThought({ goal: activeGoal.description, challenge }));
     }
 
     if (challengeType === 'coding' && language === 'python') {
         promises.push(getPythonFact());
+    } else {
+        promises.push(Promise.resolve(null)); // Keep array structure consistent
     }
 
     const [thoughtResult, factResult] = await Promise.all(promises);
@@ -161,7 +164,8 @@ export function DailyChallengeCard() {
         }
     }
     setIsFactLoading(false);
-  }
+  }, [activeGoal, challenge, challengeType, language, setCoins, setStreak, setCompletedChallenges]);
+
 
   const handleComplete = async () => {
     if (challengeType === 'coding') {
@@ -286,7 +290,7 @@ export function DailyChallengeCard() {
               <TestModal 
                 isOpen={isTestModalOpen} 
                 onOpenChange={setIsTestModalOpen}
-                topic={challengeType === 'coding' ? activeGoal : undefined}
+                topic={challengeType === 'coding' ? activeGoal.description : undefined}
                 onTestFinish={onTestFinish}
               />
             )}
@@ -302,7 +306,7 @@ export function DailyChallengeCard() {
             {challengeType === 'study' && <BookOpen />}
             Today's Quest
         </CardTitle>
-        <CardDescription>A small step towards your goal: {activeGoal}</CardDescription>
+        <CardDescription>A small step towards your goal: {activeGoal?.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
         <p className="text-xl md:text-2xl font-medium text-center text-foreground/90">{challenge}</p>
