@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, query, where, DocumentData } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
@@ -76,7 +76,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           activeGoalDescription: null,
           friendIds: [],
         };
-        await setDoc(userDocRef!, newUserProfile);
+        if (userDocRef) {
+          await setDoc(userDocRef, newUserProfile);
+        }
       }
     };
     createUserProfile();
