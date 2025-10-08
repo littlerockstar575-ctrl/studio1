@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -24,8 +25,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
-  const { setGoals, goals } = useAppContext();
+export function GoalSetter({ isUpdate = false, onGoalAdded }: { isUpdate?: boolean, onGoalAdded?: () => void }) {
+  const { setGoals, goals, setActiveGoal } = useAppContext();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -42,12 +43,17 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
         });
         return;
     }
-    setGoals(prevGoals => [...prevGoals, data.goal]);
+    const newGoals = [...goals, data.goal];
+    setGoals(newGoals);
+    setActiveGoal(data.goal); // Set the new goal as active
     toast({
         title: "Goal Added!",
-        description: `Your new goal is: ${data.goal}`,
+        description: `Your new active goal is: ${data.goal}`,
     });
     form.reset();
+    if(onGoalAdded) {
+      onGoalAdded();
+    }
   };
 
   const cardContent = (

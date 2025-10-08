@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
@@ -25,10 +26,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [completedChallenges, setCompletedChallenges] = useState(0);
 
   useEffect(() => {
-    if (goals.length > 0 && !activeGoal) {
+    // This effect ensures that if there's no active goal but there are goals in the list,
+    // the first one becomes active. If the active goal is removed, it also assigns a new one.
+    if (!activeGoal && goals.length > 0) {
       setActiveGoal(goals[0]);
     } else if (goals.length === 0) {
       setActiveGoal(null);
+    } else if (activeGoal && !goals.includes(activeGoal)) {
+      // If the currently active goal is no longer in the list, pick the first one as the new active goal.
+      setActiveGoal(goals[0] || null);
     }
   }, [goals, activeGoal]);
 
