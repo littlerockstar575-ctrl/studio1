@@ -95,11 +95,11 @@ export function DailyChallengeCard() {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [goal, completedChallenges]);
+  }, [goal]);
 
   useEffect(() => {
     fetchChallenge();
-  }, [goal]);
+  }, [goal, fetchChallenge]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -123,19 +123,6 @@ export function DailyChallengeCard() {
 
     return () => clearInterval(interval);
   }, [isLoading, isCompleted, challenge, challengeType]);
-
-  const handleFetchFact = async () => {
-    if (language !== 'python') return;
-
-    setIsFactLoading(true);
-    const result = await getPythonFact();
-    if (result.success) {
-      setPythonFact(result.success);
-    } else {
-      setPythonFact("Could not fetch a fun fact. Maybe try again?");
-    }
-    setIsFactLoading(false);
-  }
   
   const handleCompletion = async () => {
     const reward = challengeType === 'coding' ? 150 : 100;
@@ -143,21 +130,38 @@ export function DailyChallengeCard() {
     setStreak(s => s + 1);
     setCompletedChallenges(c => c + 1);
     setIsCompleted(true);
+    setIsThoughtLoading(true);
+    setIsFactLoading(true);
+
+    const promises = [];
+
+    if (goal && challenge) {
+        promises.push(getCompletionThought({ goal, challenge }));
+    }
 
     if (challengeType === 'coding' && language === 'python') {
-        handleFetchFact();
+        promises.push(getPythonFact());
     }
-    
-    if (goal && challenge) {
-        setIsThoughtLoading(true);
-        const thoughtResult = await getCompletionThought({ goal, challenge });
+
+    const [thoughtResult, factResult] = await Promise.all(promises);
+
+    if (thoughtResult) {
         if(thoughtResult.success) {
             setCompletionThought(thoughtResult.success);
         } else {
             setCompletionThought("Every step forward is a victory.");
         }
-        setIsThoughtLoading(false);
     }
+    setIsThoughtLoading(false);
+
+    if (factResult) {
+        if (factResult.success) {
+            setPythonFact(factResult.success);
+        } else {
+            setPythonFact("Could not fetch a fun fact. Maybe try again?");
+        }
+    }
+    setIsFactLoading(false);
   }
 
   const handleComplete = async () => {
@@ -172,7 +176,7 @@ export function DailyChallengeCard() {
 
         if (validationResult.success && validationResult.success.isValid) {
             toast({ title: "Challenge Done!", description: "Great job! Your code was accepted." });
-            handleCompletion();
+            await handleCompletion();
         } else {
             toast({ variant: 'destructive', title: "Not Quite Right", description: validationResult.success?.reason || validationResult.failure || "Your code doesn't seem to solve the challenge. Please try again." });
         }
@@ -180,7 +184,7 @@ export function DailyChallengeCard() {
     }
 
     if (!isCompletable) return;
-    handleCompletion();
+    await handleCompletion();
   };
 
   const handleNewChallenge = () => {
@@ -253,7 +257,7 @@ export function DailyChallengeCard() {
                     completionThought && <p className="text-lg italic text-accent-foreground/90">"{completionThought}"</p>
                 )}
 
-                {challengeType === 'coding' && language === 'python' && pythonFact && (
+                {challengeType === 'coding' && language === 'python' && (
                   <div className="p-4 bg-background/50 rounded-lg text-sm text-center italic space-y-3">
                     <div className="flex items-center justify-center gap-2 font-semibold">
                       <Lightbulb className="h-5 w-5 text-yellow-400" />
@@ -328,7 +332,3 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
-
-    
-
-    
