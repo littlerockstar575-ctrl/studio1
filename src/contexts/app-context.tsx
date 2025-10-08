@@ -86,8 +86,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Fetch incoming friend requests from the user's subcollection
   const friendRequestsQuery = useMemoFirebase(() => {
+    // Critical: Do not run query until user is available.
     if (!user) return null;
-    // Correctly query the subcollection nested under the current user's document
     return query(collection(firestore, 'users', user.uid, 'friendRequests'), where('status', '==', 'pending'));
   }, [user, firestore]);
   
