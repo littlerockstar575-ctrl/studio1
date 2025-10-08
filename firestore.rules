@@ -1,39 +1,35 @@
 /**
- * @fileoverview Firestore Security Rules for GoalForge application.
+ * @fileoverview Firestore Security Rules for GoalForge.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Users can only access their own data, with the exception of challenge templates which are publicly readable.
+ * This ruleset enforces a strict user-ownership model for most data, supplemented by public read access for shared, non-private data.
  *
  * Data Structure:
- * - /users/{userId}: User profiles, accessible only by the user.
- * - /users/{userId}/goals/{goalId}: Goals specific to a user, accessible only by the user.
+ * - /users/{userId}: User profiles, accessible only to the owning user.
+ * - /users/{userId}/goals/{goalId}: Goals associated with a specific user, accessible only to the owning user.
  * - /challengeTemplates/{challengeTemplateId}: Publicly readable challenge templates.
- * - /users/{userId}/userChallenges/{userChallengeId}: User-specific challenges, accessible only by the user.
+ * - /users/{userId}/userChallenges/{userChallengeId}: User-specific challenges, accessible only to the owning user.
  *
  * Key Security Decisions:
- * - Users can only create their own profile.
- * - Users cannot list all users.
+ * - User listing is implicitly disallowed by the structure.
  * - Challenge Templates are publicly readable.
- * - All other collections are strictly user-owned.
+ * - All write operations require authentication.
  *
  * Denormalization for Authorization:
- * This ruleset leverages path-based authorization to avoid costly `get()` calls. User IDs are embedded in the document paths, allowing rules to easily verify ownership using `request.auth.uid`.
- *
- * Structural Segregation:
- * Public challenge templates are stored in a separate top-level collection to avoid mixing public and private data within the same collection, simplifying read operations.
+ * The data structure is designed such that subcollections are secured based on the parent user ID, enforcing strong ownership and avoiding the need for `get()` calls in rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles.
+     * @description Rules for the /users/{userId} collection.
      * @path /users/{userId}
-     * @allow (create) Authenticated user creates their own profile.
-     * @allow (get, update, delete) Authenticated user accesses their own profile.
-     * @deny (create) Authenticated user attempts to create a profile for another user.
-     * @deny (get, update, delete) Authenticated user attempts to access another user's profile.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, validates relational integrity between documents.
+     * @allow (create) - User with UID 'user123' can create their own profile document.
+     * @allow (get, update, delete) - User with UID 'user123' can read, update, and delete their profile document.
+     * @deny (create) - User with UID 'anotherUser' cannot create a profile document with ID 'user123'.
+     * @deny (update, delete) - User with UID 'anotherUser' cannot update or delete the profile document with ID 'user123'.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -45,23 +41,25 @@ service cloud.firestore {
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
       }
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
+
       allow get: if isOwner(userId);
       allow list: if false;
+
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to goals associated with a specific user.
+     * @description Rules for the /users/{userId}/goals/{goalId} collection.
      * @path /users/{userId}/goals/{goalId}
-     * @allow (create) Authenticated user creates a goal under their profile.
-     * @allow (get, update, delete) Authenticated user accesses their own goal.
-     * @deny (create) Authenticated user attempts to create a goal for another user.
-     * @deny (get, update, delete) Authenticated user attempts to access another user's goal.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, validates relational integrity between documents.
+     * @allow (create) - User with UID 'user123' can create a goal document under their profile.
+     * @allow (get, update, delete) - User with UID 'user123' can read, update, and delete goal documents under their profile.
+     * @deny (create) - User with UID 'anotherUser' cannot create a goal document under user 'user123'.
+     * @deny (update, delete) - User with UID 'anotherUser' cannot update or delete the goal document under user 'user123'.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/goals/{goalId} {
       function isSignedIn() {
@@ -73,22 +71,22 @@ service cloud.firestore {
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
       }
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to challenge templates.
+     * @description Rules for the /challengeTemplates/{challengeTemplateId} collection.
      * @path /challengeTemplates/{challengeTemplateId}
-     * @allow (get, list) All users can read challenge templates.
-     * @deny (create, update, delete) No user can create, update, or delete challenge templates (admin only).
-     * @principle Allows public read access to challenge templates.
+     * @allow (get, list) - Any user, signed in or not, can read challenge templates.
+     * @deny (create, update, delete) - No user can create, update, or delete challenge templates (admin only).
+     * @principle Provides public read access to shared data while restricting write access.
      */
     match /challengeTemplates/{challengeTemplateId} {
       allow get, list: if true;
@@ -96,13 +94,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to user challenges assigned to a specific user.
+     * @description Rules for the /users/{userId}/userChallenges/{userChallengeId} collection.
      * @path /users/{userId}/userChallenges/{userChallengeId}
-     * @allow (create) Authenticated user creates a user challenge under their profile.
-     * @allow (get, update, delete) Authenticated user accesses their own user challenge.
-     * @deny (create) Authenticated user attempts to create a user challenge for another user.
-     * @deny (get, update, delete) Authenticated user attempts to access another user's user challenge.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, validates relational integrity between documents.
+     * @allow (create) - User with UID 'user123' can create a userChallenge document under their profile.
+     * @allow (get, update, delete) - User with UID 'user123' can read, update, and delete userChallenge documents under their profile.
+     * @deny (create) - User with UID 'anotherUser' cannot create a userChallenge document under user 'user123'.
+     * @deny (update, delete) - User with UID 'anotherUser' cannot update or delete the userChallenge document under user 'user123'.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/userChallenges/{userChallengeId} {
       function isSignedIn() {
@@ -114,14 +112,27 @@ service cloud.firestore {
       }
 
       function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
       }
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
       allow delete: if isExistingOwner(userId);
+    }
+
+      /**
+     * @description Rules for the /friendRequests collection.
+     * @path /friendRequests
+     * @allow (list) - Deny all users from listing friend requests.
+     */
+    match /friendRequests {
+        allow get: if false;
+        allow list: if false;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
   }
 }
