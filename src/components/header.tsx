@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Home, Wallet, Users, Settings, Target } from "lucide-react";
+import { Menu, Home, Wallet, Users, Settings, Target, Bot } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ const navItems = [
     { href: "/dashboard", label: "Home", icon: Home },
     { href: "/wallet", label: "Wallet & Badges", icon: Wallet },
     { href: "/friends", label: "Friends", icon: Users },
+    { href: "/ask-ai", label: "Ask AI", icon: Bot },
     { href: "/settings", label: "Settings", icon: Settings },
 ];
 
