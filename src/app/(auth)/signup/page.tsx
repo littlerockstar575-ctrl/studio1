@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation";
 import React from "react";
 import { useAuth } from "@/firebase/provider";
-import { GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/hooks/use-toast";
+import { updateProfile } from "firebase/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -30,15 +31,26 @@ export default function SignupPage() {
     e.preventDefault();
     setIsLoading(true);
     const target = e.target as typeof e.target & {
+      name: { value: string };
       email: { value: string };
       password: { value: string };
     };
+    const name = target.name.value;
     const email = target.email.value;
     const password = target.password.value;
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, { displayName: name });
+        await sendEmailVerification(userCredential.user);
+        toast({
+          title: "Verification Email Sent",
+          description: "Please check your inbox to verify your email address.",
+          duration: 3000,
+        });
+        router.push("/verify-email");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -56,7 +68,7 @@ export default function SignupPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      router.push("/dashboard"); // Google sign-in usually provides a verified email
     } catch (error: any) {
       toast({
         variant: "destructive",

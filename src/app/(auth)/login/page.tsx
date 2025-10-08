@@ -36,8 +36,12 @@ export default function LoginPage() {
     const email = target.email.value;
     const password = target.password.value;
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (userCredential.user && !userCredential.user.emailVerified) {
+        router.push("/verify-email");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -54,8 +58,14 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      const userCredential = await signInWithPopup(auth, provider);
+       // Google sign-in usually provides a verified email
+       if (userCredential.user && !userCredential.user.emailVerified) {
+         // This is rare, but handle it just in case
+        router.push("/verify-email");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
