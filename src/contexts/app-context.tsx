@@ -87,8 +87,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch incoming friend requests
   const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    // Simplified query to only filter by receiverId, which is allowed by the rules.
-    // Filtering by status will happen on the client side.
     return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid));
   }, [user, firestore]);
   

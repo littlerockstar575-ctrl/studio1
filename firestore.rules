@@ -1,149 +1,140 @@
 /**
  * @fileoverview Firestore Security Rules for GoalForge.
  *
- * Core Philosophy: This ruleset enforces a strict user-ownership model for user profiles, goals, and user-specific challenges.
- * Challenge templates are publicly readable. Friend requests are secured by requiring participation.
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model, augmented by public read access where appropriate.  Data is organized to minimize the need for complex queries within the rules.
  *
  * Data Structure:
- * - /users/{userId}: User profile information.
- * - /users/{userId}/goals/{goalId}: Goals associated with a specific user.
- * - /challengeTemplates/{challengeTemplateId}: Challenge templates available to all users.
- * - /users/{userId}/userChallenges/{userChallengeId}: Challenges assigned to a specific user.
- * - /friendRequests/{friendRequestId}: Individual friend requests between users, secured by sender/receiver relationship.
+ * - /users/{userId}: User profiles, accessible only by the owning user.
+ * - /users/{userId}/goals/{goalId}: User's goals, accessible only by the owning user.
+ * - /challengeTemplates/{challengeTemplateId}: Publicly accessible challenge templates.
+ * - /users/{userId}/userChallenges/{userChallengeId}: User's challenges, accessible only by the owning user.
+ * - /friendRequests: List operation blocked for all users.
  *
  * Key Security Decisions:
- * - Users can only access their own profile data and associated subcollections (goals, userChallenges).
+ * - No user listing is allowed to protect user privacy.
  * - Challenge templates are publicly readable but not writable.
- * - Listing operations are secured based on path-based ownership.
- * - Friend requests are user-specific; users can only interact with requests they are part of (sender or receiver).
+ * - Strict ownership is enforced for user profiles, goals, and user challenges.
+ * - friendRequests collection listing is forbidden.
  *
  * Denormalization for Authorization:
- *   The data structure relies on path-based ownership, eliminating the need for `get()` calls in user and goal security rules.
- *   Friend requests require 'senderId' and 'receiverId' fields for participation-based authorization.
+ * The data structure is designed such that access control decisions can be made based on the path and data within a document, without requiring additional `get()` calls. For example, the `userId` is embedded within the Goal and UserChallenge documents.
+ *
+ * Structural Segregation:
+ * Publicly readable data (challenge templates) is stored in a separate top-level collection, while private user data is stored under the `/users/{userId}` path.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profiles. Only the user can read/write their own profile.
+     * @description Checks if the request is authenticated.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's auth UID.
+     * @returns {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the existing resource.
+     * @param {string} userId - The user ID to compare against the resource's userId and the request's auth UID.
+     * @returns {boolean} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Defines the rules for the /users/{userId} collection.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user with a matching user ID can create their profile.
-     * @allow (get, list, update, delete) - Authenticated user with a matching user ID can read/write their profile.
-     * @deny (create) - Authenticated user trying to create a profile with a different user ID.
-     * @deny (get, list, update, delete) - Any user trying to access another user's profile.
+     * @allow (create) User 'ftB703Oot8aUgKL2RiibrONPaO32' can create their profile.
+     * @allow (get) User 'ftB703Oot8aUgKL2RiibrONPaO32' can read their profile.
+     * @allow (update) User 'ftB703Oot8aUgKL2RiibrONPaO32' can update their profile.
+     * @allow (delete) User 'ftB703Oot8aUgKL2RiibrONPaO32' can delete their profile.
+     * @deny (create) User 'randomId' cannot create a profile with ID 'ftB703Oot8aUgKL2RiibrONPaO32'.
      * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to goals associated with a specific user. Only the owning user can access these goals.
+     * @description Defines the rules for the /users/{userId}/goals/{goalId} collection.
      * @path /users/{userId}/goals/{goalId}
-     * @allow (create) - Authenticated user can create a goal under their profile.
-     * @allow (get, list, update, delete) - Authenticated user can read/write goals under their profile.
-     * @deny (create) - Any user trying to create a goal under another user's profile.
-     * @deny (get, list, update, delete) - Any user trying to access goals under another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User 'ftB703Oot8aUgKL2RiibrONPaO32' can create a goal under their profile.
+     * @allow (get) User 'ftB703Oot8aUgKL2RiibrONPaO32' can read a goal under their profile.
+     * @allow (update) User 'ftB703Oot8aUgKL2RiibrONPaO32' can update a goal under their profile.
+     * @allow (delete) User 'ftB703Oot8aUgKL2RiibrONPaO32' can delete a goal under their profile.
+     * @deny (create) User 'randomId' cannot create a goal under user 'ftB703Oot8aUgKL2RiibrONPaO32''s profile.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId}/goals/{goalId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to challenge templates.  These are globally accessible.
+     * @description Defines the rules for the /challengeTemplates/{challengeTemplateId} collection.
      * @path /challengeTemplates/{challengeTemplateId}
-     * @allow (get, list) - Any user can read challenge templates.
-     * @deny (create, update, delete) - No user can create, update, or delete challenge templates.
-     * @principle Challenge templates are globally readable and non-modifiable by users.
+     * @allow (get) Any user can read challenge templates.
+     * @deny (create) No user can create challenge templates.
+     * @deny (update) No user can update challenge templates.
+     * @deny (delete) No user can delete challenge templates.
+     * @principle Allows public read access for challenge templates and restricts writes.
      */
     match /challengeTemplates/{challengeTemplateId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Controls access to user challenges assigned to a specific user. Only the owning user can access these challenges.
+     * @description Defines the rules for the /users/{userId}/userChallenges/{userChallengeId} collection.
      * @path /users/{userId}/userChallenges/{userChallengeId}
-     * @allow (create) - Authenticated user can create a userChallenge under their profile.
-     * @allow (get, list, update, delete) - Authenticated user can read/write userChallenges under their profile.
-     * @deny (create) - Any user trying to create a userChallenge under another user's profile.
-     * @deny (get, list, update, delete) - Any user trying to access userChallenges under another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User 'ftB703Oot8aUgKL2RiibrONPaO32' can create a user challenge under their profile.
+     * @allow (get) User 'ftB703Oot8aUgKL2RiibrONPaO32' can read a user challenge under their profile.
+     * @allow (update) User 'ftB703Oot8aUgKL2RiibrONPaO32' can update a user challenge under their profile.
+     * @allow (delete) User 'ftB703Oot8aUgKL2RiibrONPaO32' can delete a user challenge under their profile.
+     * @deny (create) User 'randomId' cannot create a user challenge under user 'ftB703Oot8aUgKL2RiibrONPaO32''s profile.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId}/userChallenges/{userChallengeId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
-      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to the 'friendRequests' collection.
+     * @description Defines the rules for the /friendRequests collection. List access is forbidden
      * @path /friendRequests
-     * @allow (list) - Broad listing of all friend requests is explicitly denied for security.
-     * @principle Users should only query for their own incoming or outgoing requests using filters.
+     * @deny (list) No user can list the friendRequests collection.
+     * @principle Denies list access to the friendRequests collection.
      */
     match /friendRequests {
-      allow list: if false;
-    }
-
-    /**
-     * @description Controls access to individual friend request documents.
-     * Assumes friendRequest documents contain 'senderId' and 'receiverId' fields.
-     * @path /friendRequests/{friendRequestId}
-     * @allow (create) - Authenticated user can create a request if they are the sender.
-     * @allow (get, update, delete) - Authenticated user can get, update, or delete a request if they are either the sender or receiver.
-     * @deny - Any user not involved in the request.
-     * @principle Enforces participation-based ownership.
-     */
-    match /friendRequests/{friendRequestId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isParticipant(senderId, receiverId) {
-        return isSignedIn() && (
-          request.auth.uid == senderId ||
-          request.auth.uid == receiverId
-        );
-      }
-
-      allow get: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId;
-      allow update: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
-      allow delete: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
+        allow get: if false;
+        allow list: if false;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
     }
   }
 }
