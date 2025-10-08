@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -12,11 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { askGoalForge } from "@/lib/actions";
 
 interface Message {
+  id: number;
   sender: "user" | "bot";
   text: string;
 }
@@ -27,43 +29,72 @@ export default function AskAiPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const scrollToBottom = () => {
     if (scrollAreaRef.current) {
-        // A bit of a hack to scroll to the bottom.
-        // The underlying radix-ui scrollarea doesn't expose a ref to the viewport directly.
         const viewport = scrollAreaRef.current.querySelector('div[style*="overflow: scroll"]');
         if (viewport) {
             viewport.scrollTop = viewport.scrollHeight;
         }
     }
+  }
+
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
 
 
   const handleSend = async () => {
     if (input.trim() === "") return;
 
-    const userMessage: Message = { sender: "user", text: input };
+    const userMessage: Message = { id: Date.now(), sender: "user", text: input };
     setMessages((prev) => [...prev, userMessage]);
+    const question = input;
     setInput("");
     setIsLoading(true);
+    
+    // Give a slight delay to show the user message before the bot "thinks"
+    setTimeout(scrollToBottom, 100);
 
-    const result = await askGoalForge({ question: input });
+    const result = await askGoalForge({ question });
+
+    setIsLoading(false);
 
     if (result.success) {
-      const botMessage: Message = { sender: "bot", text: result.success };
-      setMessages((prev) => [...prev, botMessage]);
+      const botMessageId = Date.now();
+      const initialBotMessage: Message = { id: botMessageId, sender: "bot", text: "" };
+      setMessages((prev) => [...prev, initialBotMessage]);
+
+      // Simulate typing effect
+      let currentIndex = 0;
+      const responseText = result.success;
+      const interval = setInterval(() => {
+        if (currentIndex < responseText.length) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === botMessageId
+                ? { ...msg, text: responseText.substring(0, currentIndex + 1) }
+                : msg
+            )
+          );
+          currentIndex++;
+          scrollToBottom();
+        } else {
+          clearInterval(interval);
+        }
+      }, 20); // Adjust typing speed here (ms per character)
+
     } else {
       const errorMessage: Message = {
+        id: Date.now(),
         sender: "bot",
         text: "Sorry, I'm having trouble connecting right now. Please try again later.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     }
-    setIsLoading(false);
   };
   
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isLoading) {
         handleSend();
     }
   }
@@ -83,9 +114,9 @@ export default function AskAiPage() {
           <CardContent className="flex-grow flex flex-col gap-4">
             <ScrollArea className="flex-grow pr-4" ref={scrollAreaRef}>
                 <div className="space-y-4">
-                {messages.map((message, index) => (
+                {messages.map((message) => (
                     <div
-                    key={index}
+                    key={message.id}
                     className={`flex items-start gap-3 ${
                         message.sender === "user" ? "justify-end" : ""
                     }`}
@@ -122,8 +153,10 @@ export default function AskAiPage() {
                                 <Bot className="w-5 h-5" />
                             </AvatarFallback>
                         </Avatar>
-                        <div className="max-w-xs rounded-lg px-4 py-2 text-sm bg-muted flex items-center">
-                            <Loader2 className="w-5 h-5 animate-spin"/>
+                        <div className="max-w-xs rounded-lg px-4 py-2 text-sm bg-muted flex items-center space-x-1">
+                            <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
+                            <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
+                            <span className="h-2 w-2 bg-foreground/50 rounded-full animate-pulse"></span>
                         </div>
                     </div>
                 )}
