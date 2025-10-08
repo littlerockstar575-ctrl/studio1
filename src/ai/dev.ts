@@ -8,3 +8,4 @@ import '@/ai/flows/generate-python-fact.ts';
 import '@/ai/flows/classify-goal.ts';
 import '@/ai/flows/validate-code.ts';
 import '@/ai/flows/generate-completion-thought.ts';
+import '@/ai/flows/generate-challenge-hint.ts';

@@ -11,11 +11,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContext } from "@/contexts/app-context";
-import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode, getCompletionThought } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2 } from "lucide-react";
+import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode, getCompletionThought, getChallengeHint } from "@/lib/actions";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2, Coins } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
 import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
@@ -24,11 +35,12 @@ import { TestModal } from "./test-modal";
 
 const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
 const TEST_INTERVAL = 5; // Show test after every 5 challenges
+const HINT_COST = 50;
 
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { activeGoal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
+  const { activeGoal, setCoins, coins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
@@ -46,6 +58,8 @@ export function DailyChallengeCard() {
   const [placeholderCode, setPlaceholderCode] = useState("");
   const [completionThought, setCompletionThought] = useState<string | null>(null);
   const [isThoughtLoading, setIsThoughtLoading] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [isHintLoading, setIsHintLoading] = useState(false);
 
 
   const fetchChallenge = useCallback(async () => {
@@ -59,6 +73,7 @@ export function DailyChallengeCard() {
     setPythonFact(null);
     setCompletionThought(null);
     setIsCompletable(false);
+    setHint(null);
     
     const classificationResult = await getClassifiedGoal(activeGoal.description);
 
@@ -67,7 +82,7 @@ export function DailyChallengeCard() {
 
     if (classificationResult.success) {
         type = classificationResult.success.type;
-        detectedLanguage = classificationResult.success.language;
+        detectedLanguage = classificationresult.success.language;
     } else {
         setError("Could not understand your goal. Please try rephrasing it in settings.");
         setIsLoading(false);
@@ -133,17 +148,10 @@ export function DailyChallengeCard() {
     setIsThoughtLoading(true);
     setIsFactLoading(true);
 
-    const promises = [];
-
-    if (activeGoal && challenge) {
-        promises.push(getCompletionThought({ goal: activeGoal.description, challenge }));
-    }
-
-    if (challengeType === 'coding' && language === 'python') {
-        promises.push(getPythonFact());
-    } else {
-        promises.push(Promise.resolve(null)); // Keep array structure consistent
-    }
+    const promises: [Promise<any>, Promise<any> | null] = [
+        activeGoal && challenge ? getCompletionThought({ goal: activeGoal.description, challenge }) : Promise.resolve(null),
+        challengeType === 'coding' && language === 'python' ? getPythonFact() : Promise.resolve(null)
+    ];
 
     const [thoughtResult, factResult] = await Promise.all(promises);
 
@@ -192,7 +200,7 @@ export function DailyChallengeCard() {
 
   const handleNewChallenge = () => {
     setIsCompleted(false);
-    fetchChallenge();
+    setCompletedChallenges(c => c + 1);
   };
 
   const onTestFinish = (score: number) => {
@@ -203,6 +211,28 @@ export function DailyChallengeCard() {
         description: `You scored ${score} and earned a bonus of ${bonus} coins!`,
     })
   }
+
+  const handleGetHint = async () => {
+    if (!activeGoal || !challenge || coins < HINT_COST) return;
+    
+    setIsHintLoading(true);
+    setCoins(c => c - HINT_COST);
+
+    const result = await getChallengeHint({
+      goal: activeGoal.description,
+      challenge: challenge,
+      language: challengeType === 'coding' ? language : undefined,
+    });
+
+    if (result.success) {
+      setHint(result.success);
+    } else {
+      setHint("Sorry, couldn't generate a hint right now. Your coins were not spent.");
+      setCoins(c => c + HINT_COST); // refund
+    }
+    setIsHintLoading(false);
+  };
+
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -238,7 +268,7 @@ export function DailyChallengeCard() {
                 <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
                 <h3 className="text-xl font-semibold text-destructive-foreground">Failed to Forge Challenge</h3>
                 <p className="text-destructive-foreground/80">{error}</p>
-                <Button onClick={handleNewChallenge} variant="destructive">
+                <Button onClick={fetchChallenge} variant="destructive">
                     <RefreshCw className="mr-2 h-4 w-4" /> Try Again
                 </Button>
             </CardContent>
@@ -310,6 +340,16 @@ export function DailyChallengeCard() {
       </CardHeader>
       <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
         <p className="text-xl md:text-2xl font-medium text-center text-foreground/90">{challenge}</p>
+        
+        {hint && (
+            <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                <p className="text-sm text-blue-800 italic">
+                    <Lightbulb className="inline-block h-4 w-4 mr-2" />
+                    {hint}
+                </p>
+            </div>
+        )}
+
         {challengeType === 'coding' && (
             <div className="w-full">
                  <CodeEditor code={userCode} setCode={setUserCode} language={language} />
@@ -327,10 +367,40 @@ export function DailyChallengeCard() {
                 </p>
             </div>
         )}
-        <Button onClick={handleComplete} disabled={!isCompletable || isValidating} size="lg" className="w-full">
-          {isValidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isValidating ? 'Validating...' : (challengeType === 'coding' ? "Submit Code" : "Complete Challenge")}
-        </Button>
+
+        <div className="w-full flex items-center gap-2">
+            <Button onClick={handleComplete} disabled={!isCompletable || isValidating} size="lg" className="w-full">
+              {isValidating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isValidating ? 'Validating...' : (challengeType === 'coding' ? "Submit Code" : "Complete Challenge")}
+            </Button>
+
+            {!hint && !isCompleted && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button 
+                            variant="outline" 
+                            size="lg" 
+                            disabled={isHintLoading || coins < HINT_COST}
+                            className="shrink-0"
+                        >
+                            <Lightbulb className="h-5 w-5" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Need a little help?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Get a hint for this challenge. It will cost <strong className="text-primary">{HINT_COST} coins</strong>.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleGetHint}>Get Hint</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+        </div>
       </CardFooter>
     </Card>
   );

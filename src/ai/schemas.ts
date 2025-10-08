@@ -75,3 +75,15 @@ export const GenerateCompletionThoughtOutputSchema = z.object({
     thought: z.string().describe("A short, motivational thought related to the completed challenge and goal."),
 });
 export type GenerateCompletionThoughtOutput = z.infer<typeof GenerateCompletionThoughtOutputSchema>;
+
+export const GenerateChallengeHintInputSchema = z.object({
+    goal: z.string().describe("The user's main goal."),
+    challenge: z.string().describe("The specific challenge the user is working on."),
+    language: z.string().optional().describe("The programming language for the challenge, if applicable."),
+});
+export type GenerateChallengeHintInput = z.infer<typeof GenerateChallengeHintInputSchema>;
+
+export const GenerateChallengeHintOutputSchema = z.object({
+    hint: z.string().describe("A short, helpful hint for the user."),
+});
+export type GenerateChallengeHintOutput = z.infer<typeof GenerateChallengeHintOutputSchema>;

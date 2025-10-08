@@ -7,7 +7,8 @@ import { generatePythonFact } from "@/ai/flows/generate-python-fact";
 import { classifyGoal } from "@/ai/flows/classify-goal";
 import { validateCode as validateCodeFlow } from "@/ai/flows/validate-code";
 import { generateCompletionThought as generateCompletionThoughtFlow } from "@/ai/flows/generate-completion-thought";
-import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput, GenerateCompletionThoughtInputSchema, type GenerateCompletionThoughtInput, type GenerateCompletionThoughtOutput } from "@/ai/schemas";
+import { generateChallengeHint as generateChallengeHintFlow } from "@/ai/flows/generate-challenge-hint";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput, GenerateCompletionThoughtInputSchema, type GenerateCompletionThoughtInput, type GenerateCompletionThoughtOutput, GenerateChallengeHintInputSchema, type GenerateChallengeHintInput, type GenerateChallengeHintOutput } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
   const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
@@ -98,3 +99,19 @@ export async function getCompletionThought(input: GenerateCompletionThoughtInput
         return { failure: "Failed to generate completion thought." };
     }
 }
+
+export async function getChallengeHint(input: GenerateChallengeHintInput): Promise<{ success: string } | { failure: string }> {
+    const validatedInput = GenerateChallengeHintInputSchema.safeParse(input);
+  
+    if (!validatedInput.success) {
+      return { failure: "Invalid input for generating hint." };
+    }
+  
+    try {
+      const result = await generateChallengeHintFlow(validatedInput.data);
+      return { success: result.hint };
+    } catch (error) {
+      console.error(error);
+      return { failure: "Failed to generate hint." };
+    }
+  }
