@@ -2,10 +2,10 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
-import { useUser } from "@/firebase/provider";
-import { collection, doc, setDoc, getDoc, query, where, DocumentData } from "firebase/firestore";
-import { useFirestore } from "@/firebase/provider";
-import { useDoc, useCollection } from "@/firebase/firestore/use-doc";
+import { useUser, useFirestore } from "@/firebase";
+import { collection, doc, setDoc, query, where, DocumentData } from "firebase/firestore";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { User as FirebaseUser } from "firebase/auth";
 
 export interface Goal {
