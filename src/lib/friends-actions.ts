@@ -2,8 +2,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { firestore } from "@/firebase/admin";
+import * as admin from 'firebase-admin';
 import { FieldValue } from "firebase-admin/firestore";
+
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+const firestore = admin.firestore();
+
 
 export async function sendFriendRequest(senderId: string, senderName: string, senderEmail: string, receiverId: string) {
     if (senderId === receiverId) {
