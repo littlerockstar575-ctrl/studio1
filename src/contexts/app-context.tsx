@@ -3,9 +3,9 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
 import { useUser } from "@/firebase/provider";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, getDoc, query, where, DocumentData } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
-import { useDoc } from "@/firebase/firestore/use-doc";
+import { useDoc, useCollection } from "@/firebase/firestore/use-doc";
 import { User as FirebaseUser } from "firebase/auth";
 
 export interface Goal {
@@ -22,6 +22,15 @@ export interface UserProfile {
   lastChallengeDate: string | null; // ISO date string
   goals: Goal[];
   activeGoalDescription: string | null;
+  friendIds: string[];
+}
+
+export interface FriendRequest {
+    senderId: string;
+    senderName: string;
+    senderEmail: string;
+    receiverId: string;
+    status: 'pending' | 'accepted' | 'declined';
 }
 
 interface AppContextType {
@@ -34,6 +43,10 @@ interface AppContextType {
   goals: Goal[];
   setGoals: (goals: Goal[]) => void;
   updateGoal: (updatedGoal: Goal) => void;
+  incomingFriendRequests: (FriendRequest & {id: string})[] | null;
+  isRequestsLoading: boolean;
+  friends: (UserProfile & {id: string})[] | null;
+  isFriendsLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -61,12 +74,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
           lastChallengeDate: null,
           goals: [],
           activeGoalDescription: null,
+          friendIds: [],
         };
         await setDoc(userDocRef!, newUserProfile);
       }
     };
     createUserProfile();
   }, [user, userProfile, isProfileLoading, userDocRef]);
+
+  // Fetch incoming friend requests
+  const friendRequestsQuery = useMemo(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid), where('status', '==', 'pending'));
+  }, [user, firestore]);
+  const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
+
+  // Fetch friends' profiles
+  const friendsQuery = useMemo(() => {
+    if (!userProfile || !userProfile.friendIds || userProfile.friendIds.length === 0) return null;
+    return query(collection(firestore, 'users'), where('__name__', 'in', userProfile.friendIds));
+  }, [userProfile, firestore]);
+  const { data: friends, isLoading: isFriendsLoading } = useCollection<UserProfile>(friendsQuery);
+
   
   const goals = userProfile?.goals || [];
   const activeGoal = userProfile?.activeGoalDescription
@@ -108,6 +137,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     goals,
     setGoals,
     updateGoal,
+    incomingFriendRequests,
+    isRequestsLoading,
+    friends,
+    isFriendsLoading,
   };
 
 
