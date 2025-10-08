@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 export interface Goal {
   description: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'Hacker' | 'Godly';
+  completedChallenges: number;
 }
 
 interface AppContextType {
@@ -17,8 +18,7 @@ interface AppContextType {
   setCoins: React.Dispatch<React.SetStateAction<number>>;
   streak: number;
   setStreak: React.Dispatch<React.SetStateAction<number>>;
-  completedChallenges: number;
-  setCompletedChallenges: React.Dispatch<React.SetStateAction<number>>;
+  updateGoal: (updatedGoal: Goal) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -28,24 +28,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [coins, setCoins] = useState(3500);
   const [streak, setStreak] = useState(35);
-  const [completedChallenges, setCompletedChallenges] = useState(0);
 
   useEffect(() => {
-    // This effect ensures that if there's no active goal but there are goals in the list,
-    // the first one becomes active. If the active goal is removed, it also assigns a new one.
     if (!activeGoal && goals.length > 0) {
       setActiveGoal(goals[0]);
     } else if (goals.length === 0) {
       setActiveGoal(null);
     } else if (activeGoal && !goals.some(g => g.description === activeGoal.description)) {
-      // If the currently active goal is no longer in the list, pick the first one as the new active goal.
       setActiveGoal(goals[0] || null);
     }
   }, [goals, activeGoal]);
 
+  const updateGoal = (updatedGoal: Goal) => {
+    setGoals(prevGoals => 
+      prevGoals.map(g => 
+        g.description === updatedGoal.description ? updatedGoal : g
+      )
+    );
+    if (activeGoal?.description === updatedGoal.description) {
+      setActiveGoal(updatedGoal);
+    }
+  };
+
 
   return (
-    <AppContext.Provider value={{ activeGoal, setActiveGoal, goals, setGoals, coins, setCoins, streak, setStreak, completedChallenges, setCompletedChallenges }}>
+    <AppContext.Provider value={{ activeGoal, setActiveGoal, goals, setGoals, coins, setCoins, streak, setStreak, updateGoal }}>
       {children}
     </AppContext.Provider>
   );

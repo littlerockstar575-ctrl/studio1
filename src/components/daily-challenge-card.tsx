@@ -40,7 +40,7 @@ const HINT_COST = 50;
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { activeGoal, setCoins, coins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
+  const { activeGoal, setCoins, coins, setStreak, streak, updateGoal } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
@@ -82,7 +82,7 @@ export function DailyChallengeCard() {
 
     if (classificationResult.success) {
         type = classificationResult.success.type;
-        detectedLanguage = classificationresult.success.language;
+        detectedLanguage = classificationResult.success.language;
     } else {
         setError("Could not understand your goal. Please try rephrasing it in settings.");
         setIsLoading(false);
@@ -103,7 +103,7 @@ export function DailyChallengeCard() {
         setTimer(10); 
     }
 
-    const result = await getDailyChallenge({ goal: activeGoal.description, difficulty: activeGoal.difficulty, completedChallenges });
+    const result = await getDailyChallenge({ goal: activeGoal.description, difficulty: activeGoal.difficulty, completedChallenges: activeGoal.completedChallenges });
     if (result.success) {
       setChallenge(result.success);
     } else {
@@ -140,10 +140,15 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
   
   const handleCompletion = useCallback(async () => {
+    if (!activeGoal) return;
+    
     const reward = challengeType === 'coding' ? 150 : 100;
     setCoins(c => c + reward);
     setStreak(s => s + 1);
-    setCompletedChallenges(c => c + 1);
+    
+    const updatedGoal = { ...activeGoal, completedChallenges: activeGoal.completedChallenges + 1 };
+    updateGoal(updatedGoal);
+
     setIsCompleted(true);
     setIsThoughtLoading(true);
     setIsFactLoading(true);
@@ -172,7 +177,7 @@ export function DailyChallengeCard() {
         }
     }
     setIsFactLoading(false);
-  }, [activeGoal, challenge, challengeType, language, setCoins, setStreak, setCompletedChallenges]);
+  }, [activeGoal, challenge, challengeType, language, setCoins, setStreak, updateGoal]);
 
 
   const handleComplete = async () => {
@@ -200,7 +205,7 @@ export function DailyChallengeCard() {
 
   const handleNewChallenge = () => {
     setIsCompleted(false);
-    setCompletedChallenges(c => c + 1);
+    fetchChallenge();
   };
 
   const onTestFinish = (score: number) => {
@@ -240,8 +245,8 @@ export function DailyChallengeCard() {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
-  const showTestButton = completedChallenges > 0 && completedChallenges % TEST_INTERVAL === 0;
-  const challengesUntilTest = TEST_INTERVAL - (completedChallenges % TEST_INTERVAL);
+  const showTestButton = activeGoal && activeGoal.completedChallenges > 0 && activeGoal.completedChallenges % TEST_INTERVAL === 0;
+  const challengesUntilTest = activeGoal ? TEST_INTERVAL - (activeGoal.completedChallenges % TEST_INTERVAL) : TEST_INTERVAL;
 
 
   if (isLoading) {

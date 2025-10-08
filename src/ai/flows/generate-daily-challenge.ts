@@ -24,11 +24,11 @@ const prompt = ai.definePrompt({
 
   The user's current goal is: {{{goal}}}
   The user has chosen the difficulty: {{{difficulty}}}
-  The user has completed: {{{completedChallenges}}} challenges.
+  The user has completed: {{{completedChallenges}}} challenges for this specific goal.
 
   Your main priority is to create a challenge that matches the user's chosen difficulty level. The number of completed challenges should be used for gradual progression *within* that difficulty tier.
 
-  - **Beginner**: These are for absolute beginners. The very first challenges (0-3) should be extremely simple "hello world" style tasks. For coding, this means printing output, declaring variables, or writing a basic function.
+  - **Beginner**: These are for absolute beginners. The very first challenges (0-3 completed) should be extremely simple "hello world" style tasks. For coding, this means printing output, declaring variables, or writing a basic function.
   - **Intermediate**: Assume the user knows the basics. Challenges should combine concepts, like loops with conditionals, or working with basic data structures like arrays/lists and objects/dictionaries.
   - **Advanced**: These users are comfortable with the core language. Give them challenges that involve more complex problem-solving, reading/writing files, or interacting with simple data formats like JSON.
   - **Hacker**: This level is for experienced users. Challenges should involve using popular libraries, making API calls, or solving algorithmic problems.
@@ -45,6 +45,7 @@ const prompt = ai.definePrompt({
   - Completed 5: 'Write a function that uses a for loop to print numbers from 1 to 10.'
 
   A bad challenge is one that doesn't match the selected difficulty. Do not give a 'Beginner' an API challenge. Do not give a 'Hacker' a "declare a variable" challenge.
+  Also, analyze the goal description itself. If the user says 'learn ADVANCED python', lean towards the harder end of their selected difficulty tier, even if their completed challenge count is low.
   `,
 });
 

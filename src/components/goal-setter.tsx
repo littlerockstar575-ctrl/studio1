@@ -54,7 +54,7 @@ export function GoalSetter({ isUpdate = false, onGoalAdded }: { isUpdate?: boole
         });
         return;
     }
-    const newGoal: Goal = { description: data.goal, difficulty: data.difficulty };
+    const newGoal: Goal = { description: data.goal, difficulty: data.difficulty, completedChallenges: 0 };
     const newGoals = [...goals, newGoal];
     setGoals(newGoals);
     setActiveGoal(newGoal); // Set the new goal as active
