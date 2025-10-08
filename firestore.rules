@@ -2,21 +2,24 @@
  * @fileoverview Firestore Security Rules for GoalForge.
  *
  * Core Philosophy: This ruleset enforces a strict user-ownership model for user profiles, goals, and user-specific challenges.
- * Challenge templates are publicly readable.
+ * Challenge templates are publicly readable. Friend requests are secured by requiring participation.
  *
  * Data Structure:
  * - /users/{userId}: User profile information.
  * - /users/{userId}/goals/{goalId}: Goals associated with a specific user.
  * - /challengeTemplates/{challengeTemplateId}: Challenge templates available to all users.
  * - /users/{userId}/userChallenges/{userChallengeId}: Challenges assigned to a specific user.
+ * - /friendRequests/{friendRequestId}: Individual friend requests between users, secured by sender/receiver relationship.
  *
  * Key Security Decisions:
  * - Users can only access their own profile data and associated subcollections (goals, userChallenges).
  * - Challenge templates are publicly readable but not writable.
  * - Listing operations are secured based on path-based ownership.
+ * - Friend requests are user-specific; users can only interact with requests they are part of (sender or receiver).
  *
  * Denormalization for Authorization:
- *   The data structure relies on path-based ownership, eliminating the need for `get()` calls in security rules.
+ *   The data structure relies on path-based ownership, eliminating the need for `get()` calls in user and goal security rules.
+ *   Friend requests require 'senderId' and 'receiverId' fields for participation-based authorization.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -104,6 +107,43 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
       allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.userId == resource.data.userId;
       allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Controls access to the 'friendRequests' collection.
+     * @path /friendRequests
+     * @allow (list) - Broad listing of all friend requests is explicitly denied for security.
+     * @principle Users should only query for their own incoming or outgoing requests using filters.
+     */
+    match /friendRequests {
+      allow list: if false;
+    }
+
+    /**
+     * @description Controls access to individual friend request documents.
+     * Assumes friendRequest documents contain 'senderId' and 'receiverId' fields.
+     * @path /friendRequests/{friendRequestId}
+     * @allow (create) - Authenticated user can create a request if they are the sender.
+     * @allow (get, update, delete) - Authenticated user can get, update, or delete a request if they are either the sender or receiver.
+     * @deny - Any user not involved in the request.
+     * @principle Enforces participation-based ownership.
+     */
+    match /friendRequests/{friendRequestId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isParticipant(senderId, receiverId) {
+        return isSignedIn() && (
+          request.auth.uid == senderId ||
+          request.auth.uid == receiverId
+        );
+      }
+
+      allow get: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.senderId;
+      allow update: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
+      allow delete: if isSignedIn() && resource != null && isParticipant(resource.data.senderId, resource.data.receiverId);
     }
   }
 }
