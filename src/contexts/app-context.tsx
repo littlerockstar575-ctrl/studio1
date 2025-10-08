@@ -1,7 +1,12 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
+import { useUser } from "@/firebase/provider";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { User as FirebaseUser } from "firebase/auth";
 
 export interface Goal {
   description: string;
@@ -9,50 +14,119 @@ export interface Goal {
   completedChallenges: number;
 }
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  coins: number;
+  streak: number;
+  lastChallengeDate: string | null; // ISO date string
+  goals: Goal[];
+  activeGoalDescription: string | null;
+}
+
 interface AppContextType {
+  user: FirebaseUser | null;
+  isUserLoading: boolean;
+  userProfile: UserProfile | null;
+  isProfileLoading: boolean;
   activeGoal: Goal | null;
   setActiveGoal: (goal: Goal | null) => void;
   goals: Goal[];
-  setGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
-  coins: number;
-  setCoins: React.Dispatch<React.SetStateAction<number>>;
-  streak: number;
-  setStreak: React.Dispatch<React.SetStateAction<number>>;
+  setGoals: (goals: Goal[]) => void;
+  setCoins: (setter: number | ((prev: number) => number)) => void;
+  setStreak: (setter: number | ((prev: number) => number)) => void;
   updateGoal: (updatedGoal: Goal) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
-  const [coins, setCoins] = useState(3500);
-  const [streak, setStreak] = useState(35);
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  
+  const userDocRef = useMemo(() => {
+    if (!user) return undefined;
+    return doc(firestore, "users", user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
   useEffect(() => {
-    if (!activeGoal && goals.length > 0) {
-      setActiveGoal(goals[0]);
-    } else if (goals.length === 0) {
-      setActiveGoal(null);
-    } else if (activeGoal && !goals.some(g => g.description === activeGoal.description)) {
-      setActiveGoal(goals[0] || null);
+    const createUserProfile = async () => {
+      if (user && !isProfileLoading && !userProfile) {
+        console.log("Creating user profile for new user:", user.uid);
+        const newUserProfile: UserProfile = {
+          name: user.displayName || "Anonymous User",
+          email: user.email || "",
+          coins: 0,
+          streak: 0,
+          lastChallengeDate: null,
+          goals: [],
+          activeGoalDescription: null,
+        };
+        await setDoc(userDocRef!, newUserProfile);
+      }
+    };
+    createUserProfile();
+  }, [user, userProfile, isProfileLoading, userDocRef]);
+  
+  const goals = userProfile?.goals || [];
+  const activeGoal = userProfile?.activeGoalDescription
+    ? goals.find(g => g.description === userProfile.activeGoalDescription) || null
+    : goals.length > 0 ? goals[0] : null;
+
+  const updateFirestore = async (updates: Partial<UserProfile>) => {
+    if (userDocRef) {
+      await setDoc(userDocRef, updates, { merge: true });
     }
-  }, [goals, activeGoal]);
+  };
+
+  const setGoals = (newGoals: Goal[]) => {
+    updateFirestore({ goals: newGoals });
+  };
+
+  const setActiveGoal = (goal: Goal | null) => {
+    updateFirestore({ activeGoalDescription: goal?.description || null });
+  };
 
   const updateGoal = (updatedGoal: Goal) => {
-    setGoals(prevGoals => 
-      prevGoals.map(g => 
-        g.description === updatedGoal.description ? updatedGoal : g
-      )
+    const newGoals = goals.map(g =>
+      g.description === updatedGoal.description ? updatedGoal : g
     );
+    let newActiveGoalDesc = activeGoal?.description;
     if (activeGoal?.description === updatedGoal.description) {
-      setActiveGoal(updatedGoal);
+        newActiveGoalDesc = updatedGoal.description;
     }
+    updateFirestore({ goals: newGoals, activeGoalDescription: newActiveGoalDesc });
+  };
+
+  const setCoins = (setter: number | ((prev: number) => number)) => {
+    const newCoins = typeof setter === 'function' ? setter(userProfile?.coins ?? 0) : setter;
+    updateFirestore({ coins: newCoins });
+  };
+  
+  const setStreak = (setter: number | ((prev: number) => number)) => {
+    const newStreak = typeof setter === 'function' ? setter(userProfile?.streak ?? 0) : setter;
+    updateFirestore({ streak: newStreak });
+  };
+
+  const value: AppContextType = {
+    user,
+    isUserLoading,
+    userProfile,
+    isProfileLoading,
+    activeGoal,
+    setActiveGoal,
+    goals,
+    setGoals,
+    setCoins,
+    setStreak,
+    updateGoal,
   };
 
 
   return (
-    <AppContext.Provider value={{ activeGoal, setActiveGoal, goals, setGoals, coins, setCoins, streak, setStreak, updateGoal }}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

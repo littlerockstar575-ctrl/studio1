@@ -24,13 +24,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAppContext } from "@/contexts/app-context";
+import { useAppContext, UserProfile } from "@/contexts/app-context";
 import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode, getCompletionThought, getChallengeHint } from "@/lib/actions";
 import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2, Coins } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
 import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
 import { TestModal } from "./test-modal";
+import { setDoc, doc } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import { isToday, isYesterday, formatISO } from 'date-fns';
 
 
 const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
@@ -40,7 +43,8 @@ const HINT_COST = 50;
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { activeGoal, setCoins, coins, setStreak, streak, updateGoal } = useAppContext();
+  const { activeGoal, userProfile, updateGoal, user } = useAppContext();
+  const firestore = useFirestore();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
@@ -110,11 +114,11 @@ export function DailyChallengeCard() {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [activeGoal]);
+  }, [activeGoal?.description, activeGoal?.difficulty, activeGoal?.completedChallenges]);
 
   useEffect(() => {
     fetchChallenge();
-  }, [activeGoal, fetchChallenge]);
+  }, [fetchChallenge]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -140,44 +144,62 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
   
   const handleCompletion = useCallback(async () => {
-    if (!activeGoal) return;
+    if (!activeGoal || !userProfile || !user) return;
+    
+    const today = new Date();
+    const lastDate = userProfile.lastChallengeDate ? new Date(userProfile.lastChallengeDate) : null;
+    let newStreak = userProfile.streak;
+
+    if (lastDate) {
+        if (isYesterday(lastDate)) {
+            newStreak += 1; // It was yesterday, increment streak
+        } else if (!isToday(lastDate)) {
+            newStreak = 1; // It wasn't today or yesterday, reset streak
+        }
+        // If it was today, streak doesn't change
+    } else {
+        newStreak = 1; // First challenge ever
+    }
     
     const reward = challengeType === 'coding' ? 150 : 100;
-    setCoins(c => c + reward);
-    setStreak(s => s + 1);
+    const newCoins = userProfile.coins + reward;
     
     const updatedGoal = { ...activeGoal, completedChallenges: activeGoal.completedChallenges + 1 };
-    updateGoal(updatedGoal);
+    
+    // Update goal in goals array
+    const newGoals = userProfile.goals.map(g => g.description === updatedGoal.description ? updatedGoal : g);
+
+    const userDocRef = doc(firestore, "users", user.uid);
+    await setDoc(userDocRef, { 
+        coins: newCoins,
+        streak: newStreak,
+        lastChallengeDate: formatISO(today, { representation: 'date' }),
+        goals: newGoals,
+        activeGoalDescription: activeGoal.description, // ensure active goal is preserved
+     }, { merge: true });
 
     setIsCompleted(true);
     setIsThoughtLoading(true);
     setIsFactLoading(true);
 
-    const promises: [Promise<any>, Promise<any> | null] = [
+    const [thoughtResult, factResult] = await Promise.all([
         activeGoal && challenge ? getCompletionThought({ goal: activeGoal.description, challenge }) : Promise.resolve(null),
         challengeType === 'coding' && language === 'python' ? getPythonFact() : Promise.resolve(null)
-    ];
+    ]);
 
-    const [thoughtResult, factResult] = await Promise.all(promises);
-
-    if (thoughtResult) {
-        if(thoughtResult.success) {
-            setCompletionThought(thoughtResult.success);
-        } else {
-            setCompletionThought("Every step forward is a victory.");
-        }
+    if (thoughtResult?.success) {
+        setCompletionThought(thoughtResult.success);
+    } else {
+        setCompletionThought("Every step forward is a victory.");
     }
     setIsThoughtLoading(false);
 
-    if (factResult) {
-        if (factResult.success) {
-            setPythonFact(factResult.success);
-        } else {
-            setPythonFact("Could not fetch a fun fact. Maybe try again?");
-        }
+    if (factResult?.success) {
+        setPythonFact(factResult.success);
     }
     setIsFactLoading(false);
-  }, [activeGoal, challenge, challengeType, language, setCoins, setStreak, updateGoal]);
+
+  }, [activeGoal, challenge, challengeType, language, userProfile, user, firestore]);
 
 
   const handleComplete = async () => {
@@ -210,7 +232,9 @@ export function DailyChallengeCard() {
 
   const onTestFinish = (score: number) => {
     const bonus = score * 50; 
-    setCoins(c => c + bonus);
+    if (userDocRef && userProfile) {
+        setDoc(userDocRef, { coins: userProfile.coins + bonus }, { merge: true });
+    }
     toast({
         title: "Test Complete!",
         description: `You scored ${score} and earned a bonus of ${bonus} coins!`,
@@ -218,10 +242,10 @@ export function DailyChallengeCard() {
   }
 
   const handleGetHint = async () => {
-    if (!activeGoal || !challenge || coins < HINT_COST) return;
+    if (!activeGoal || !challenge || !userProfile || userProfile.coins < HINT_COST || !userDocRef) return;
     
     setIsHintLoading(true);
-    setCoins(c => c - HINT_COST);
+    await setDoc(userDocRef, { coins: userProfile.coins - HINT_COST }, { merge: true });
 
     const result = await getChallengeHint({
       goal: activeGoal.description,
@@ -233,7 +257,7 @@ export function DailyChallengeCard() {
       setHint(result.success);
     } else {
       setHint("Sorry, couldn't generate a hint right now. Your coins were not spent.");
-      setCoins(c => c + HINT_COST); // refund
+      await setDoc(userDocRef, { coins: userProfile.coins }, { merge: true }); // refund
     }
     setIsHintLoading(false);
   };
@@ -249,7 +273,7 @@ export function DailyChallengeCard() {
   const challengesUntilTest = activeGoal ? TEST_INTERVAL - (activeGoal.completedChallenges % TEST_INTERVAL) : TEST_INTERVAL;
 
 
-  if (isLoading) {
+  if (isLoading || !userProfile) {
     return (
       <Card className="flex flex-col justify-center items-center min-h-[24rem]">
         <CardHeader>
@@ -385,7 +409,7 @@ export function DailyChallengeCard() {
                         <Button 
                             variant="outline" 
                             size="lg" 
-                            disabled={isHintLoading || coins < HINT_COST}
+                            disabled={isHintLoading || (userProfile?.coins ?? 0) < HINT_COST}
                             className="shrink-0"
                         >
                             <Lightbulb className="h-5 w-5" />

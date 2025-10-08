@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -26,7 +27,10 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { coins, streak } = useAppContext();
+  const { userProfile } = useAppContext();
+
+  const coins = userProfile?.coins ?? 0;
+  const streak = userProfile?.streak ?? 0;
 
   return (
     <div className="hidden border-r bg-card text-card-foreground md:block">
