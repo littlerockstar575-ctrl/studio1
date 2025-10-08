@@ -18,6 +18,8 @@ import { useFirestore } from "@/firebase/provider";
 import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export function AddFriend() {
     const { user, userProfile } = useAppContext();
@@ -66,13 +68,22 @@ export function AddFriend() {
                 return;
             }
             
-            await addDoc(requestsRef, {
+            const requestData = {
                 senderId: user.uid,
                 senderName: userProfile.name,
                 senderEmail: userProfile.email,
                 receiverId: receiverId,
-                status: 'pending',
+                status: 'pending' as const,
                 createdAt: new Date(),
+            };
+
+            addDoc(requestsRef, requestData).catch(serverError => {
+                const permissionError = new FirestorePermissionError({
+                    path: requestsRef.path,
+                    operation: 'create',
+                    requestResourceData: requestData
+                });
+                errorEmitter.emit('permission-error', permissionError);
             });
 
             await revalidateFriendsPage();
@@ -80,6 +91,7 @@ export function AddFriend() {
             setFriendId("");
 
         } catch (error: any) {
+            // This will catch errors from getDoc or getDocs, which we don't need to make contextual
             console.error("Error sending friend request:", error);
             toast({ variant: "destructive", title: "Error", description: "An error occurred while sending the request.", duration: 2000 });
         } finally {

@@ -10,6 +10,8 @@ import { revalidateFriendsPage } from "@/lib/friends-actions";
 import { useFirestore } from "@/firebase/provider";
 import { doc, writeBatch, arrayUnion } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export function FriendRequests() {
     const { incomingFriendRequests, isRequestsLoading, user } = useAppContext();
@@ -18,21 +20,13 @@ export function FriendRequests() {
     const onHandleRequest = async (request: FriendRequest & { id: string }, action: "accept" | "decline") => {
         if (!user || !firestore) return;
 
-        // Correctly reference the request document inside the current user's subcollection
+        const batch = writeBatch(firestore);
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
 
-        try {
-            const batch = writeBatch(firestore);
-
-            if (action === "decline") {
-                // Just update the status to declined
-                batch.update(requestRef, { status: 'declined' });
-                await batch.commit();
-                await revalidateFriendsPage();
-                toast({ title: "Success", description: "Request declined.", duration: 2000 });
-                return;
-            }
-
+        if (action === "decline") {
+            // Just update the status to declined
+            batch.update(requestRef, { status: 'declined' });
+        } else {
             // Accept action
             const acceptorRef = doc(firestore, 'users', user.uid);
             const senderRef = doc(firestore, 'users', request.senderId);
@@ -42,16 +36,19 @@ export function FriendRequests() {
             batch.update(senderRef, { friendIds: arrayUnion(user.uid) });
             // Update the request status to accepted
             batch.update(requestRef, { status: 'accepted' });
-            
-            await batch.commit();
-
-            await revalidateFriendsPage();
-            toast({ title: "Success", description: "Friend added!", duration: 2000 });
-
-        } catch (error: any) {
-            console.error("Error handling friend request:", error);
-            toast({ variant: 'destructive', title: "Error", description: "An error occurred.", duration: 2000 });
         }
+        
+        batch.commit().then(async () => {
+            await revalidateFriendsPage();
+            toast({ title: "Success", description: action === 'accept' ? "Friend added!" : "Request declined.", duration: 2000 });
+        }).catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: requestRef.path,
+                operation: 'update',
+                requestResourceData: { status: action } 
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
     }
 
     if (isRequestsLoading) {
