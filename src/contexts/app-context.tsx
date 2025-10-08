@@ -85,9 +85,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch incoming friend requests
   const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid), where('status', '==', 'pending'));
+    // Simplified query to only filter by receiverId, which is allowed by the rules.
+    // Filtering by status will happen on the client side.
+    return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid));
   }, [user, firestore]);
-  const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
+  
+  const { data: allRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
+
+  const incomingFriendRequests = useMemo(() => {
+    if (!allRequests) return null;
+    // Filter for pending requests on the client
+    return allRequests.filter(req => req.status === 'pending');
+  }, [allRequests]);
+
 
   // Fetch friends' profiles
   const friendsQuery = useMemoFirebase(() => {
