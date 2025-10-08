@@ -9,6 +9,7 @@ import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -37,6 +38,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   if (user && user.emailVerified) {
     return (
         <AppProvider>
+            <FirebaseErrorListener />
             <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
             <Sidebar />
             <div className="flex flex-col">
