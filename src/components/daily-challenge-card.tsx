@@ -50,15 +50,15 @@ export function DailyChallengeCard() {
 
   const fetchChallenge = useCallback(async () => {
     if (!goal) return;
+
     setIsLoading(true);
     setError(null);
     setChallenge(null);
-    setIsCompleted(false);
-    setIsCompletable(false);
     setProgress(0);
     setUserCode("");
     setPythonFact(null);
     setCompletionThought(null);
+    setIsCompletable(false);
     
     const classificationResult = await getClassifiedGoal(goal);
 
@@ -99,7 +99,7 @@ export function DailyChallengeCard() {
 
   useEffect(() => {
     fetchChallenge();
-  }, [fetchChallenge]);
+  }, [goal]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -138,11 +138,11 @@ export function DailyChallengeCard() {
   }
   
   const handleCompletion = async () => {
-    setIsCompleted(true);
     const reward = challengeType === 'coding' ? 150 : 100;
     setCoins(c => c + reward);
     setStreak(s => s + 1);
     setCompletedChallenges(c => c + 1);
+    setIsCompleted(true);
 
     if (challengeType === 'coding' && language === 'python') {
         handleFetchFact();
@@ -184,6 +184,7 @@ export function DailyChallengeCard() {
   };
 
   const handleNewChallenge = () => {
+    setIsCompleted(false);
     fetchChallenge();
   };
 
@@ -327,5 +328,7 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
+
+    
 
     
