@@ -25,7 +25,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
-  const { setGoal } = useAppContext();
+  const { setGoals, goals } = useAppContext();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -34,14 +34,20 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
-    setGoal(data.goal);
+    if (goals.includes(data.goal)) {
+        toast({
+            variant: "destructive",
+            title: "Goal Already Exists",
+            description: "You already have this goal in your list.",
+        });
+        return;
+    }
+    setGoals(prevGoals => [...prevGoals, data.goal]);
     toast({
-        title: isUpdate ? "Goal Updated!" : "Goal Set!",
+        title: "Goal Added!",
         description: `Your new goal is: ${data.goal}`,
     });
-    if(isUpdate) {
-        form.reset();
-    }
+    form.reset();
   };
 
   const cardContent = (
@@ -56,7 +62,7 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
               <FormControl>
                 <Input
                   id="goal"
-                  placeholder="e.g., 'Lose 5kg', 'Learn Python', 'Read 10 books'"
+                  placeholder="e.g., 'Learn Python', 'Read 10 books'"
                   {...field}
                 />
               </FormControl>
@@ -65,7 +71,7 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
           )}
         />
         <Button type="submit" className="w-full">
-          {isUpdate ? "Update Goal" : "Start My Journey"}
+          {isUpdate ? "Add Goal" : "Start My Journey"}
         </Button>
       </form>
     </Form>
@@ -79,10 +85,10 @@ export function GoalSetter({ isUpdate = false }: { isUpdate?: boolean }) {
     <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-headline">
-          What is your goal
+          What is your first goal?
         </CardTitle>
         <CardDescription>
-          Define your goal, and we'll forge a path to victory, one challenge at a time.
+          Define your first goal, and we'll forge a path to victory, one challenge at a time.
         </CardDescription>
       </CardHeader>
       <CardContent>{cardContent}</CardContent>

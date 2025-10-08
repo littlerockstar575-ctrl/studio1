@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -28,7 +27,7 @@ const TEST_INTERVAL = 5; // Show test after every 5 challenges
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { goal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
+  const { activeGoal, setCoins, setStreak, streak, completedChallenges, setCompletedChallenges } = useAppContext();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
@@ -49,7 +48,7 @@ export function DailyChallengeCard() {
 
 
   const fetchChallenge = useCallback(async () => {
-    if (!goal) return;
+    if (!activeGoal) return;
 
     setIsLoading(true);
     setError(null);
@@ -60,7 +59,7 @@ export function DailyChallengeCard() {
     setCompletionThought(null);
     setIsCompletable(false);
     
-    const classificationResult = await getClassifiedGoal(goal);
+    const classificationResult = await getClassifiedGoal(activeGoal);
 
     let type: ChallengeType = 'other';
     let detectedLanguage: string | undefined;
@@ -88,18 +87,18 @@ export function DailyChallengeCard() {
         setTimer(10); 
     }
 
-    const result = await getDailyChallenge({ goal, completedChallenges });
+    const result = await getDailyChallenge({ goal: activeGoal, completedChallenges });
     if (result.success) {
       setChallenge(result.success);
     } else {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [goal]);
+  }, [activeGoal]);
 
   useEffect(() => {
     fetchChallenge();
-  }, [goal, fetchChallenge]);
+  }, [activeGoal, fetchChallenge]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -135,8 +134,8 @@ export function DailyChallengeCard() {
 
     const promises = [];
 
-    if (goal && challenge) {
-        promises.push(getCompletionThought({ goal, challenge }));
+    if (activeGoal && challenge) {
+        promises.push(getCompletionThought({ goal: activeGoal, challenge }));
     }
 
     if (challengeType === 'coding' && language === 'python') {
@@ -283,11 +282,11 @@ export function DailyChallengeCard() {
                     </div>
                 )}
             </CardContent>
-            {goal && (
+            {activeGoal && (
               <TestModal 
                 isOpen={isTestModalOpen} 
                 onOpenChange={setIsTestModalOpen}
-                topic={challengeType === 'coding' ? goal : undefined}
+                topic={challengeType === 'coding' ? activeGoal : undefined}
                 onTestFinish={onTestFinish}
               />
             )}
@@ -303,7 +302,7 @@ export function DailyChallengeCard() {
             {challengeType === 'study' && <BookOpen />}
             Today's Quest
         </CardTitle>
-        <CardDescription>A small step towards your goal: {goal}</CardDescription>
+        <CardDescription>A small step towards your goal: {activeGoal}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col items-center justify-center gap-4">
         <p className="text-xl md:text-2xl font-medium text-center text-foreground/90">{challenge}</p>

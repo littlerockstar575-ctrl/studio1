@@ -1,10 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 interface AppContextType {
-  goal: string | null;
-  setGoal: (goal: string | null) => void;
+  activeGoal: string | null;
+  setActiveGoal: (goal: string | null) => void;
+  goals: string[];
+  setGoals: React.Dispatch<React.SetStateAction<string[]>>;
   coins: number;
   setCoins: React.Dispatch<React.SetStateAction<number>>;
   streak: number;
@@ -16,14 +18,23 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [goal, setGoal] = useState<string | null>(null);
+  const [goals, setGoals] = useState<string[]>([]);
+  const [activeGoal, setActiveGoal] = useState<string | null>(null);
   const [coins, setCoins] = useState(3500);
   const [streak, setStreak] = useState(35);
   const [completedChallenges, setCompletedChallenges] = useState(0);
 
+  useEffect(() => {
+    if (goals.length > 0 && !activeGoal) {
+      setActiveGoal(goals[0]);
+    } else if (goals.length === 0) {
+      setActiveGoal(null);
+    }
+  }, [goals, activeGoal]);
+
 
   return (
-    <AppContext.Provider value={{ goal, setGoal, coins, setCoins, streak, setStreak, completedChallenges, setCompletedChallenges }}>
+    <AppContext.Provider value={{ activeGoal, setActiveGoal, goals, setGoals, coins, setCoins, streak, setStreak, completedChallenges, setCompletedChallenges }}>
       {children}
     </AppContext.Provider>
   );

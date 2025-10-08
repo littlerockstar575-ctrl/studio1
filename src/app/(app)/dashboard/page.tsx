@@ -7,11 +7,11 @@ import { Flame, Coins } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DashboardPage() {
-  const { goal, coins, streak } = useAppContext();
+  const { activeGoal, coins, streak } = useAppContext();
 
   return (
     <>
-      {!goal ? (
+      {!activeGoal ? (
         <div className="flex h-full items-center justify-center">
             <GoalSetter />
         </div>
@@ -39,10 +39,10 @@ export default function DashboardPage() {
             <div className="md:col-span-1">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Your Goal</CardTitle>
+                        <CardTitle>Your Active Goal</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-lg font-medium text-primary-foreground/80">{goal}</p>
+                        <p className="text-lg font-medium text-primary-foreground/80">{activeGoal}</p>
                     </CardContent>
                 </Card>
             </div>
