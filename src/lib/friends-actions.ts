@@ -7,7 +7,9 @@ import { FieldValue } from "firebase-admin/firestore";
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+  });
 }
 const firestore = admin.firestore();
 
