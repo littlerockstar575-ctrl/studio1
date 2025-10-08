@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation";
 import React from "react";
-import { useAuth } from "@/firebase";
+import { useAuth } from "@/firebase/provider";
 import { GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button"
