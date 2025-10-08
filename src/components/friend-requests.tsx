@@ -18,11 +18,12 @@ export function FriendRequests() {
     const onHandleRequest = async (request: FriendRequest & { id: string }, action: "accept" | "decline") => {
         if (!user || !firestore) return;
 
-        const requestRef = doc(firestore, 'friendRequests', request.id);
+        const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
 
         try {
+            const batch = writeBatch(firestore);
+
             if (action === "decline") {
-                const batch = writeBatch(firestore);
                 batch.update(requestRef, { status: 'declined' });
                 await batch.commit();
                 await revalidateFriendsPage();
@@ -34,7 +35,6 @@ export function FriendRequests() {
             const acceptorRef = doc(firestore, 'users', user.uid);
             const senderRef = doc(firestore, 'users', request.senderId);
 
-            const batch = writeBatch(firestore);
             batch.update(acceptorRef, { friendIds: arrayUnion(request.senderId) });
             batch.update(senderRef, { friendIds: arrayUnion(user.uid) });
             batch.update(requestRef, { status: 'accepted' });

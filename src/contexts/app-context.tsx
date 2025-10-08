@@ -84,10 +84,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     createUserProfile();
   }, [user, userProfile, isProfileLoading, userDocRef]);
 
-  // Fetch incoming friend requests
+  // Fetch incoming friend requests from the user's subcollection
   const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid));
+    return collection(firestore, 'users', user.uid, 'friendRequests');
   }, [user, firestore]);
   
   const { data: allRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);

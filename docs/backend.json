@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -144,6 +145,40 @@
         "assignedDate",
         "completed"
       ]
+    },
+     "FriendRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FriendRequest",
+      "type": "object",
+      "description": "Represents a friend request from one user to another.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the friend request."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "The UID of the user sending the request."
+        },
+        "senderName": {
+            "type": "string",
+            "description": "The name of the user sending the request."
+        },
+        "senderEmail": {
+          "type": "string",
+          "description": "The email of the user sending the request."
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "The UID of the user receiving the request."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the request.",
+          "enum": ["pending", "accepted", "declined"]
+        }
+      },
+      "required": ["id", "senderId", "senderName", "senderEmail", "receiverId", "status"]
     }
   },
   "auth": {
@@ -226,8 +261,28 @@
             }
           ]
         }
+      },
+       {
+        "path": "/users/{userId}/friendRequests/{requestId}",
+        "definition": {
+          "entityName": "FriendRequest",
+          "schema": {
+            "$ref": "#/backend/entities/FriendRequest"
+          },
+          "description": "Stores friend requests sent to a user in a subcollection. Security rules enforce that users can only manage requests sent to them.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user receiving the request."
+            },
+            {
+              "name": "requestId",
+              "description": "The unique identifier for the friend request."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily maintainable backend for the GoalForge application, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). It uses denormalization to eliminate the need for `get()` calls in security rules, enabling atomic operations and simplifying debugging. The structure also segregates data based on access requirements to simplify security rules.\n\n*   **User Data:** Stored under `/users/{userId}`. The structure utilizes path-based ownership, ensuring that only the authenticated user can access their own data.\n*   **Goals:** Stored under `/users/{userId}/goals/{goalId}`. Goals are nested under the user, reinforcing ownership. This is a 1:N relationship between User and Goal.\n*   **Challenge Templates:** Challenge templates are stored under `/challengeTemplates/{challengeTemplateId}` and are globally accessible, since they are templates, not user-specific instances.\n*   **User Challenges:** User-specific challenges are stored under `/users/{userId}/userChallenges/{userChallengeId}`. This structure enables path-based ownership, allowing users to only access challenges assigned to them.\n\n**Authorization Independence:** Achieved by denormalizing authorization data. For instance, if access to a goal needed to depend on user attributes, those attributes would be copied into the goal document. In this design, all subcollections are secured based on the parent user ID, enforcing strong ownership.\n\n**QAPs Support:** The structure supports secure `list` operations by ensuring that each collection has a homogeneous security posture. For example, listing challenges under a user only returns challenges owned by that user, preventing unauthorized access to other users' data."
+    "reasoning": "The Firestore structure has been updated to use a subcollection model for friend requests (/users/{userId}/friendRequests). This is a more secure and scalable approach than a root-level 'friendRequests' collection. It simplifies security rules by tying data directly to the user who owns it, ensuring users can only query and manage their own incoming requests. This change resolves persistent permission errors related to listing friend requests."
   }
 }

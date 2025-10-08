@@ -52,10 +52,9 @@ export function AddFriend() {
                 return;
             }
 
-            const requestsRef = collection(firestore, 'friendRequests');
+            const requestsRef = collection(firestore, 'users', receiverId, 'friendRequests');
             const q = query(requestsRef, 
-                where('senderId', '==', user.uid), 
-                where('receiverId', '==', receiverId),
+                where('senderId', '==', user.uid),
                 where('status', '==', 'pending')
             );
             const existingRequestSnap = await getDocs(q);
@@ -65,7 +64,7 @@ export function AddFriend() {
                 setIsLoading(false);
                 return;
             }
-
+            
             await addDoc(requestsRef, {
                 senderId: user.uid,
                 senderName: userProfile.name,
