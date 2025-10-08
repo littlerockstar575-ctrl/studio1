@@ -2,107 +2,147 @@
  * @fileoverview Firestore Security Rules for GoalForge.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model.  Users can only access their own data, with the exception of public challenge templates.
+ * This ruleset enforces a strict user-ownership model for user profiles, goals, and user challenges.
+ * Challenge templates are publicly readable.
  *
  * Data Structure:
- * - /users/{userId}:  User profile data. Only the authenticated user can read/write their profile.
- * - /users/{userId}/goals/{goalId}: Goals associated with a specific user. Only the owning user can access these goals.
- * - /challengeTemplates/{challengeTemplateId}: Public challenge templates. Accessible by all users.
- * - /users/{userId}/userChallenges/{userChallengeId}: User-specific challenges. Only the owning user can access these.
- * - /friendRequests: List operation was denied.
+ * - /users/{userId}: User profiles, accessible only by the owning user.
+ * - /users/{userId}/goals/{goalId}: Goals associated with a user, accessible only by the owning user.
+ * - /challengeTemplates/{challengeTemplateId}: Publicly readable challenge templates.
+ * - /users/{userId}/userChallenges/{userChallengeId}: User-specific challenges, accessible only by the owning user.
  *
  * Key Security Decisions:
- * - User listing is implicitly disallowed (no top-level `/users` collection).
- * - Challenge Templates are globally readable.
+ * - Users can only access their own profiles and associated data (goals, challenges).
+ * - Challenge templates are publicly readable to allow all users to fetch and use them.
+ * - No user listing is allowed to prevent information disclosure.
  *
  * Denormalization for Authorization:
- * - Ownership is enforced via path-based rules, eliminating the need for `get()` calls.
+ * The data structure leverages path-based authorization, eliminating the need for `get()` calls.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to read and write their own profile data.
+     * @description Controls access to user profiles.
      * @path /users/{userId}
-     * @allow (create, update, get, delete) if request.auth.uid == userId
-     * @deny (create, update, get, delete) if request.auth.uid != userId
+     * @allow (create) - User with UID 'user123' can create their profile at /users/user123 if request.auth.uid == 'user123'.
+     * @allow (get) - User with UID 'user123' can read their profile at /users/user123 if request.auth.uid == 'user123'.
+     * @allow (update) - User with UID 'user123' can update their profile at /users/user123 if request.auth.uid == 'user123'.
+     * @allow (delete) - User with UID 'user123' can delete their profile at /users/user123 if request.auth.uid == 'user123'.
+     * @deny (create) - User with UID 'user456' cannot create a profile at /users/user123.
+     * @deny (get) - User with UID 'user456' cannot read the profile at /users/user123.
      * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Only signed-in users can access user documents
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Listing users is not permitted.
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(resource);
+      }
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows users to manage their own goals.
+     * @description Controls access to goals associated with a user.
      * @path /users/{userId}/goals/{goalId}
-     * @allow (create, update, get, delete) if request.auth.uid == userId
-     * @deny (create, update, get, delete) if request.auth.uid != userId
+     * @allow (create) - User with UID 'user123' can create a goal at /users/user123/goals/goal456 if request.auth.uid == 'user123'.
+     * @allow (get) - User with UID 'user123' can read the goal at /users/user123/goals/goal456 if request.auth.uid == 'user123'.
+     * @allow (update) - User with UID 'user123' can update the goal at /users/user123/goals/goal456 if request.auth.uid == 'user123'.
+     * @allow (delete) - User with UID 'user123' can delete the goal at /users/user123/goals/goal456 if request.auth.uid == 'user123'.
+     * @deny (create) - User with UID 'user456' cannot create a goal at /users/user123/goals/goal456.
+     * @deny (get) - User with UID 'user456' cannot read the goal at /users/user123/goals/goal456.
      * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/goals/{goalId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(resource);
+      }
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows anyone to read challenge templates, but restricts creation, update, and deletion.
+     * @description Controls access to challenge templates.
      * @path /challengeTemplates/{challengeTemplateId}
-     * @allow get, list: if true
-     * @deny create, update, delete: if false
-     * @principle Challenge templates are publically readable but not writeable.
+     * @allow (get) - Any user can read a challenge template.
+     * @allow (list) - Any user can list challenge templates.
+     * @deny (create) - No one can create challenge templates through the client.
+     * @deny (update) - No one can update challenge templates through the client.
+     * @deny (delete) - No one can delete challenge templates through the client.
+     * @principle Challenge templates are globally accessible for reading.
      */
     match /challengeTemplates/{challengeTemplateId} {
-      allow get, list: if true;
+      allow get: if true;
+      allow list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows users to manage their own user challenges.
+     * @description Controls access to user challenges assigned to a specific user.
      * @path /users/{userId}/userChallenges/{userChallengeId}
-     * @allow (create, update, get, delete) if request.auth.uid == userId
-     * @deny (create, update, get, delete) if request.auth.uid != userId
-     * @principle Restricts access to a user's own data tree.
+     * @allow (create) - User with UID 'user123' can create a challenge at /users/user123/userChallenges/challenge456 if request.auth.uid == 'user123'.
+     * @allow (get) - User with UID 'user123' can read the challenge at /users/user123/userChallenges/challenge456 if request.auth.uid == 'user123'.
+     * @allow (update) - User with UID 'user123' can update the challenge at /users/user123/userChallenges/challenge456 if request.auth.uid == 'user123'.
+     * @allow (delete) - User with UID 'user123' can delete the challenge at /users/user123/userChallenges/challenge456 if request.auth.uid == 'user123'.
+     * @deny (create) - User with UID 'user456' cannot create a challenge at /users/user123/userChallenges/challenge456.
+     * @deny (get) - User with UID 'user456' cannot read the challenge at /users/user123/userChallenges/challenge456.
+     * @principle Enforces path-based ownership, restricting access to only the owning user.
      */
     match /users/{userId}/userChallenges/{userChallengeId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(resource);
+      }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
-
-    // Error reported due to the following:
-    match /friendRequests {
-        allow list: if false;
+    
+    /**
+     * @description This is a catch-all for any other paths in the database that haven't been explicitly secured.
+     * @path Any other path not explicitly matched.
+     * @deny (get, list, create, update, delete) - All access is denied to these paths.
+     * @principle Ensures that any non explicitly defined paths are completely locked down.
+     */
+    match /{path=**} {
         allow get: if false;
+        allow list: if false;
         allow create: if false;
         allow update: if false;
         allow delete: if false;
     }
-
   }
 }
