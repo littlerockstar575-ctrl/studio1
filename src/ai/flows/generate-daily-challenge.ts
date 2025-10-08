@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -26,7 +27,9 @@ const prompt = ai.definePrompt({
 
   Your main priority is to ensure the user can build a successful habit. The challenges must be very easy at the beginning and gradually increase in difficulty.
 
-  The difficulty of the challenge MUST be based on the number of completed challenges:
+  **First, analyze the user's goal for keywords like "beginner", "intermediate", or "advanced". If these keywords are present, they should take precedence over the number of completed challenges.** For example, if the goal is "Learn advanced Python" and completed challenges is 0, you should generate an advanced challenge, not a beginner one.
+
+  If no skill level is specified in the goal, use the number of completed challenges to determine the difficulty:
   - Completed 0-3: Absolute beginner tasks. Focus on the most basic building blocks. For a coding goal, this means challenges like printing output, declaring and manipulating variables, and defining simple functions. The tasks should be single-concept and take less than 5 minutes. DO NOT give challenges involving loops, file access, or complex data structures like lists/arrays or objects/dictionaries.
   - Completed 4-10: Beginner-friendly tasks that might combine two simple concepts, like using variables within a simple loop or conditional statement.
   - Completed 11-20: Intermediate tasks that are more involved and require problem-solving, like working with arrays/lists or basic data structures.
