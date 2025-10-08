@@ -39,6 +39,8 @@ export function AddFriend() {
         setIsLoading(true);
 
         try {
+            // These are read operations, and we expect them to work or fail silently for now.
+            // The main point of failure is the write operation below.
             const receiverRef = doc(firestore, "users", receiverId);
             const receiverDoc = await getDoc(receiverRef);
 
@@ -54,12 +56,8 @@ export function AddFriend() {
                 return;
             }
 
-            // Correctly reference the subcollection under the RECEIVER's user document
             const requestsRef = collection(firestore, 'users', receiverId, 'friendRequests');
-            const q = query(requestsRef, 
-                where('senderId', '==', user.uid),
-                where('status', '==', 'pending')
-            );
+            const q = query(requestsRef, where('senderId', '==', user.uid), where('status', '==', 'pending'));
             const existingRequestSnap = await getDocs(q);
 
             if (!existingRequestSnap.empty) {
@@ -77,24 +75,30 @@ export function AddFriend() {
                 createdAt: new Date(),
             };
 
-            addDoc(requestsRef, requestData).catch(serverError => {
-                const permissionError = new FirestorePermissionError({
-                    path: requestsRef.path,
-                    operation: 'create',
-                    requestResourceData: requestData
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            });
+            // Non-blocking write with proper contextual error handling
+            addDoc(requestsRef, requestData)
+              .then(async () => {
+                  await revalidateFriendsPage();
+                  toast({ title: "Success", description: "Friend request sent!", duration: 2000 });
+                  setFriendId("");
+              })
+              .catch(serverError => {
+                  const permissionError = new FirestorePermissionError({
+                      path: requestsRef.path,
+                      operation: 'create',
+                      requestResourceData: requestData
+                  });
+                  // Emit the detailed error to be caught by the global listener
+                  errorEmitter.emit('permission-error', permissionError);
+              })
+              .finally(() => {
+                  setIsLoading(false);
+              });
 
-            await revalidateFriendsPage();
-            toast({ title: "Success", description: "Friend request sent!", duration: 2000 });
-            setFriendId("");
-
-        } catch (error: any) {
-            // This will catch errors from getDoc or getDocs, which we don't need to make contextual
-            console.error("Error sending friend request:", error);
-            toast({ variant: "destructive", title: "Error", description: "An error occurred while sending the request.", duration: 2000 });
-        } finally {
+        } catch (error) {
+            // This will only catch errors from the initial read checks (getDoc, getDocs)
+            console.error("Error checking user or existing requests:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not verify user. Please try again.", duration: 2000 });
             setIsLoading(false);
         }
     }
