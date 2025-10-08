@@ -43,13 +43,17 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       if (userCredential.user) {
         await updateProfile(userCredential.user, { displayName: name });
-        await sendEmailVerification(userCredential.user);
-        toast({
-          title: "Verification Email Sent",
-          description: "Please check your inbox to verify your email address.",
-          duration: 3000,
-        });
-        router.push("/verify-email");
+        
+        // Add a small delay to ensure profile update is processed before sending email
+        setTimeout(async () => {
+            await sendEmailVerification(userCredential.user);
+            toast({
+              title: "Verification Email Sent",
+              description: "Please check your inbox to verify your email address.",
+              duration: 3000,
+            });
+            router.push("/verify-email");
+        }, 1000);
       }
     } catch (error: any) {
       toast({
@@ -58,9 +62,9 @@ export default function SignupPage() {
         description: error.message,
         duration: 2000,
       });
-    } finally {
-        setIsLoading(false);
-    }
+      setIsLoading(false); // Ensure loading is stopped on error
+    } 
+    // We don't set loading to false here because of the timeout
   };
 
   const handleGoogleSignIn = async () => {
