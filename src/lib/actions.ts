@@ -8,7 +8,8 @@ import { classifyGoal } from "@/ai/flows/classify-goal";
 import { validateCode as validateCodeFlow } from "@/ai/flows/validate-code";
 import { generateCompletionThought as generateCompletionThoughtFlow } from "@/ai/flows/generate-completion-thought";
 import { generateChallengeHint as generateChallengeHintFlow } from "@/ai/flows/generate-challenge-hint";
-import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput, GenerateCompletionThoughtInputSchema, type GenerateCompletionThoughtInput, type GenerateCompletionThoughtOutput, GenerateChallengeHintInputSchema, type GenerateChallengeHintInput, type GenerateChallengeHintOutput } from "@/ai/schemas";
+import { askGoalForge as askGoalForgeFlow } from "@/ai/flows/ask-goalforge-flow";
+import { GenerateTestQuestionsInputSchema, type GenerateTestQuestionsOutput, GenerateDailyChallengeInputSchema, type GenerateDailyChallengeInput, ClassifyGoalInputSchema, type ClassifyGoalOutput, ValidateCodeInputSchema, type ValidateCodeInput, type ValidateCodeOutput, GenerateCompletionThoughtInputSchema, type GenerateCompletionThoughtInput, type GenerateCompletionThoughtOutput, GenerateChallengeHintInputSchema, type GenerateChallengeHintInput, type GenerateChallengeHintOutput, AskGoalForgeInputSchema, type AskGoalForgeInput } from "@/ai/schemas";
 
 export async function getDailyChallenge(input: GenerateDailyChallengeInput) {
   const validatedInput = GenerateDailyChallengeInputSchema.safeParse(input);
@@ -115,3 +116,19 @@ export async function getChallengeHint(input: GenerateChallengeHintInput): Promi
       return { failure: "Failed to generate hint." };
     }
   }
+
+export async function askGoalForge(input: AskGoalForgeInput): Promise<{ success: string } | { failure: string }> {
+    const validatedInput = AskGoalForgeInputSchema.safeParse(input);
+  
+    if (!validatedInput.success) {
+      return { failure: "Invalid input for asking GoalForge." };
+    }
+  
+    try {
+      const result = await askGoalForgeFlow(validatedInput.data);
+      return { success: result.answer };
+    } catch (error) {
+      console.error(error);
+      return { failure: "Failed to get an answer from GoalForge." };
+    }
+}

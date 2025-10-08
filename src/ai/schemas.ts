@@ -87,3 +87,14 @@ export const GenerateChallengeHintOutputSchema = z.object({
     hint: z.string().describe("A short, helpful hint for the user."),
 });
 export type GenerateChallengeHintOutput = z.infer<typeof GenerateChallengeHintOutputSchema>;
+
+
+export const AskGoalForgeInputSchema = z.object({
+    question: z.string().describe("The user's question for the AI assistant."),
+});
+export type AskGoalForgeInput = z.infer<typeof AskGoalForgeInputSchema>;
+
+export const AskGoalForgeOutputSchema = z.object({
+    answer: z.string().describe("The AI assistant's answer to the user's question."),
+});
+export type AskGoalForgeOutput = z.infer<typeof AskGoalForgeOutputSchema>;
