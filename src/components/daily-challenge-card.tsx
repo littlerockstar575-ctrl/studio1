@@ -37,7 +37,7 @@ import { isToday, isYesterday, formatISO } from 'date-fns';
 
 const CHALLENGE_DURATION_STUDY = 30 * 60; // 30 minutes for study challenge
 const TEST_INTERVAL = 5; // Show test after every 5 challenges
-const HINT_COST = 50;
+const HINT_COST = 500;
 
 type ChallengeType = 'coding' | 'study' | 'other';
 
@@ -115,13 +115,21 @@ export function DailyChallengeCard() {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [activeGoal?.description, activeGoal?.difficulty]);
+  }, [activeGoal]);
 
   useEffect(() => {
     if (activeGoal) {
-        fetchChallenge();
+        // Check if user has already completed a challenge today
+        if(userProfile?.lastChallengeDate && isToday(new Date(userProfile.lastChallengeDate))) {
+            setIsCompleted(true);
+            setChallenge("You've already crushed your challenge for today!");
+            setCompletionThought("Come back tomorrow for your next quest.");
+            setIsLoading(false);
+        } else {
+            fetchChallenge();
+        }
     }
-  }, [fetchChallenge, activeGoal]);
+  }, [fetchChallenge, activeGoal, userProfile?.lastChallengeDate]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -159,7 +167,7 @@ export function DailyChallengeCard() {
         } else if (!isToday(lastDate)) {
             newStreak = 1; // It wasn't today or yesterday, reset streak
         }
-        // If it was today, streak doesn't change
+        // If it was today, streak doesn't change (though this path shouldn't be hit due to UI guards)
     } else {
         newStreak = 1; // First challenge ever
     }
@@ -314,7 +322,7 @@ export function DailyChallengeCard() {
             <CardContent className="text-center space-y-4">
                 <PartyPopper className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
-                <p className="text-accent-foreground/80">You've earned {challengeType === 'coding' ? 150 : 100} coins and extended your streak!</p>
+                <p className="text-accent-foreground/80">{!challenge?.startsWith("You've already") && `You've earned ${challengeType === 'coding' ? 150 : 100} coins and extended your streak!`}</p>
                 
                 {isThoughtLoading ? (
                     <Skeleton className="h-6 w-3/4 mx-auto" />
@@ -332,17 +340,20 @@ export function DailyChallengeCard() {
                   </div>
                 )}
                 
-                <div className="flex gap-4 justify-center pt-4">
-                    <Button onClick={handleNewChallenge}>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
-                    </Button>
-                </div>
-                 {showTestButton ? (
+                {!challenge?.startsWith("You've already") && (
+                    <div className="flex gap-4 justify-center pt-4">
+                        <Button onClick={handleNewChallenge}>
+                            <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
+                        </Button>
+                    </div>
+                )}
+
+                 {showTestButton && !challenge?.startsWith("You've already") ? (
                      <Button variant="outline" onClick={() => setIsTestModalOpen(true)} className="mt-2">
                         <BrainCircuit className="mr-2 h-4 w-4" /> Take a Bonus Test
                     </Button>
                 ) : (
-                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
+                    !challenge?.startsWith("You've already") && <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
                         <ShieldCheck className="h-4 w-4" />
                         <span>{challengesUntilTest} more challenge{challengesUntilTest > 1 ? 's' : ''} until the next test.</span>
                     </div>
