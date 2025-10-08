@@ -52,6 +52,7 @@ export function AddFriend() {
                 return;
             }
 
+            // Correctly reference the subcollection under the RECEIVER's user document
             const requestsRef = collection(firestore, 'users', receiverId, 'friendRequests');
             const q = query(requestsRef, 
                 where('senderId', '==', user.uid),
@@ -71,6 +72,7 @@ export function AddFriend() {
                 senderEmail: userProfile.email,
                 receiverId: receiverId,
                 status: 'pending',
+                createdAt: new Date(),
             });
 
             await revalidateFriendsPage();

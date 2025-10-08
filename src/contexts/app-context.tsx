@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, setDoc, query, where, DocumentData } from "firebase/firestore";
+import { collection, doc, setDoc, query, where, DocumentData, collectionGroup } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { User as FirebaseUser } from "firebase/auth";
@@ -87,16 +87,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Fetch incoming friend requests from the user's subcollection
   const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, 'users', user.uid, 'friendRequests');
+    // Correctly query the subcollection nested under the current user's document
+    return query(collection(firestore, 'users', user.uid, 'friendRequests'), where('status', '==', 'pending'));
   }, [user, firestore]);
   
-  const { data: allRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
-
-  const incomingFriendRequests = useMemo(() => {
-    if (!allRequests) return null;
-    // Filter for pending requests on the client
-    return allRequests.filter(req => req.status === 'pending');
-  }, [allRequests]);
+  const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
 
 
   // Fetch friends' profiles
