@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
-import { useUser, useFirestore } from "@/firebase";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, query, where, DocumentData } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -55,7 +55,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   
-  const userDocRef = useMemo(() => {
+  const userDocRef = useMemoFirebase(() => {
     if (!user) return undefined;
     return doc(firestore, "users", user.uid);
   }, [user, firestore]);
@@ -83,14 +83,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, userProfile, isProfileLoading, userDocRef]);
 
   // Fetch incoming friend requests
-  const friendRequestsQuery = useMemo(() => {
+  const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'friendRequests'), where('receiverId', '==', user.uid), where('status', '==', 'pending'));
   }, [user, firestore]);
   const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
 
   // Fetch friends' profiles
-  const friendsQuery = useMemo(() => {
+  const friendsQuery = useMemoFirebase(() => {
     if (!userProfile || !userProfile.friendIds || userProfile.friendIds.length === 0) return null;
     return query(collection(firestore, 'users'), where('__name__', 'in', userProfile.friendIds));
   }, [userProfile, firestore]);
