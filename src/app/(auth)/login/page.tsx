@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link"
@@ -42,6 +43,7 @@ export default function LoginPage() {
         variant: "destructive",
         title: "Sign In Failed",
         description: error.message,
+        duration: 2000,
       });
     } finally {
         setIsLoading(false);
@@ -59,6 +61,7 @@ export default function LoginPage() {
         variant: "destructive",
         title: "Google Sign In Failed",
         description: error.message,
+        duration: 2000,
       });
     } finally {
         setIsGoogleLoading(false);

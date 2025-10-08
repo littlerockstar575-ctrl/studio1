@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -57,7 +58,7 @@ export function TestModal({ isOpen, onOpenChange, topic: initialTopic, onTestFin
 
   const handleStartTest = async (currentTopic: string) => {
     if (!currentTopic) {
-      toast({ variant: 'destructive', title: 'Topic needed', description: 'Please enter a topic for the test.' });
+      toast({ variant: 'destructive', title: 'Topic needed', description: 'Please enter a topic for the test.', duration: 2000 });
       return;
     }
     setTestState("loading");
@@ -72,7 +73,7 @@ export function TestModal({ isOpen, onOpenChange, topic: initialTopic, onTestFin
   
   const handleNextQuestion = () => {
     if (selectedAnswer === null) {
-      toast({ variant: 'destructive', title: 'No answer selected', description: 'Please choose an answer.' });
+      toast({ variant: 'destructive', title: 'No answer selected', description: 'Please choose an answer.', duration: 2000 });
       return;
     }
 

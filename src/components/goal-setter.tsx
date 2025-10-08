@@ -50,6 +50,7 @@ export function GoalSetter({ isUpdate = false, onGoalAdded }: { isUpdate?: boole
             variant: "destructive",
             title: "Goal Already Exists",
             description: "You already have this goal in your list.",
+            duration: 2000,
         });
         return;
     }
@@ -60,6 +61,7 @@ export function GoalSetter({ isUpdate = false, onGoalAdded }: { isUpdate?: boole
     toast({
         title: "Goal Added!",
         description: `Your new active goal is: ${data.goal}`,
+        duration: 2000,
     });
     form.reset();
     if(onGoalAdded) {

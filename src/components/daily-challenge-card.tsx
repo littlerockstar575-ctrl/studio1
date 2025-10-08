@@ -207,7 +207,7 @@ export function DailyChallengeCard() {
   const handleComplete = async () => {
     if (challengeType === 'coding') {
         if (!challenge || !userCode || userCode.trim() === "" || userCode.trim() === placeholderCode.trim()) {
-             toast({ variant: 'destructive', title: "Not Quite", description: "Please write some code before submitting!" });
+             toast({ variant: 'destructive', title: "Not Quite", description: "Please write some code before submitting!", duration: 2000 });
              return;
         }
         setIsValidating(true);
@@ -215,10 +215,10 @@ export function DailyChallengeCard() {
         setIsValidating(false);
 
         if (validationResult.success && validationResult.success.isValid) {
-            toast({ title: "Challenge Done!", description: "Great job! Your code was accepted." });
+            toast({ title: "Challenge Done!", description: "Great job! Your code was accepted.", duration: 2000 });
             await handleCompletion();
         } else {
-            toast({ variant: 'destructive', title: "Not Quite Right", description: validationResult.success?.reason || validationResult.failure || "Your code doesn't seem to solve the challenge. Please try again." });
+            toast({ variant: 'destructive', title: "Not Quite Right", description: validationResult.success?.reason || validationResult.failure || "Your code doesn't seem to solve the challenge. Please try again.", duration: 2000 });
         }
         return;
     }
@@ -240,6 +240,7 @@ export function DailyChallengeCard() {
     toast({
         title: "Test Complete!",
         description: `You scored ${score} and earned a bonus of ${bonus} coins!`,
+        duration: 2000,
     })
   }
 
