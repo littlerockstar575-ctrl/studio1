@@ -33,8 +33,6 @@ interface AppContextType {
   setActiveGoal: (goal: Goal | null) => void;
   goals: Goal[];
   setGoals: (goals: Goal[]) => void;
-  setCoins: (setter: number | ((prev: number) => number)) => void;
-  setStreak: (setter: number | ((prev: number) => number)) => void;
   updateGoal: (updatedGoal: Goal) => void;
 }
 
@@ -100,16 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateFirestore({ goals: newGoals, activeGoalDescription: newActiveGoalDesc });
   };
 
-  const setCoins = (setter: number | ((prev: number) => number)) => {
-    const newCoins = typeof setter === 'function' ? setter(userProfile?.coins ?? 0) : setter;
-    updateFirestore({ coins: newCoins });
-  };
-  
-  const setStreak = (setter: number | ((prev: number) => number)) => {
-    const newStreak = typeof setter === 'function' ? setter(userProfile?.streak ?? 0) : setter;
-    updateFirestore({ streak: newStreak });
-  };
-
   const value: AppContextType = {
     user,
     isUserLoading,
@@ -119,8 +107,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveGoal,
     goals,
     setGoals,
-    setCoins,
-    setStreak,
     updateGoal,
   };
 

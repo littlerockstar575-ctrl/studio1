@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,8 +23,11 @@ import { useAppContext } from "@/contexts/app-context";
 import { cn } from "@/lib/utils";
 
 export default function FriendsPage() {
-  const { streak, coins } = useAppContext();
+  const { userProfile } = useAppContext();
   
+  const streak = userProfile?.streak ?? 0;
+  const coins = userProfile?.coins ?? 0;
+
   // Update "You" in the data
   const leaderboardData = friendsData.map(friend => 
     friend.name === "You" ? { ...friend, streak, coins } : friend

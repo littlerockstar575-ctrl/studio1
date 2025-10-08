@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -21,7 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function WalletPage() {
-  const { coins } = useAppContext();
+  const { userProfile } = useAppContext();
+  const coins = userProfile?.coins ?? 0;
 
   return (
     <div className="flex flex-col gap-6">

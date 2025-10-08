@@ -24,12 +24,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAppContext, UserProfile } from "@/contexts/app-context";
+import { useAppContext } from "@/contexts/app-context";
 import { getDailyChallenge, getPythonFact, getClassifiedGoal, validateCode, getCompletionThought, getChallengeHint } from "@/lib/actions";
-import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2, Coins } from "lucide-react";
+import { PartyPopper, RefreshCw, AlertCircle, Code, BookOpen, BrainCircuit, ShieldCheck, Lightbulb, Loader2 } from "lucide-react";
 import { CodeEditor } from "./code-editor";
 import { toast } from "@/hooks/use-toast";
-import type { GenerateTestQuestionsOutput } from "@/ai/schemas";
 import { TestModal } from "./test-modal";
 import { setDoc, doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
@@ -43,7 +42,7 @@ const HINT_COST = 50;
 type ChallengeType = 'coding' | 'study' | 'other';
 
 export function DailyChallengeCard() {
-  const { activeGoal, userProfile, updateGoal, user } = useAppContext();
+  const { activeGoal, userProfile, user } = useAppContext();
   const firestore = useFirestore();
   const [challenge, setChallenge] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +63,8 @@ export function DailyChallengeCard() {
   const [isThoughtLoading, setIsThoughtLoading] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
+
+  const userDocRef = user ? doc(firestore, "users", user.uid) : undefined;
 
 
   const fetchChallenge = useCallback(async () => {
@@ -114,11 +115,13 @@ export function DailyChallengeCard() {
       setError(result.failure || "An unknown error occurred.");
     }
     setIsLoading(false);
-  }, [activeGoal?.description, activeGoal?.difficulty, activeGoal?.completedChallenges]);
+  }, [activeGoal?.description, activeGoal?.difficulty]);
 
   useEffect(() => {
-    fetchChallenge();
-  }, [fetchChallenge]);
+    if (activeGoal) {
+        fetchChallenge();
+    }
+  }, [fetchChallenge, activeGoal]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -144,7 +147,7 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
   
   const handleCompletion = useCallback(async () => {
-    if (!activeGoal || !userProfile || !user) return;
+    if (!activeGoal || !userProfile || !userDocRef) return;
     
     const today = new Date();
     const lastDate = userProfile.lastChallengeDate ? new Date(userProfile.lastChallengeDate) : null;
@@ -169,7 +172,6 @@ export function DailyChallengeCard() {
     // Update goal in goals array
     const newGoals = userProfile.goals.map(g => g.description === updatedGoal.description ? updatedGoal : g);
 
-    const userDocRef = doc(firestore, "users", user.uid);
     await setDoc(userDocRef, { 
         coins: newCoins,
         streak: newStreak,
@@ -199,7 +201,7 @@ export function DailyChallengeCard() {
     }
     setIsFactLoading(false);
 
-  }, [activeGoal, challenge, challengeType, language, userProfile, user, firestore]);
+  }, [activeGoal, challenge, challengeType, language, userProfile, userDocRef]);
 
 
   const handleComplete = async () => {
@@ -403,7 +405,7 @@ export function DailyChallengeCard() {
               {isValidating ? 'Validating...' : (challengeType === 'coding' ? "Submit Code" : "Complete Challenge")}
             </Button>
 
-            {!hint && !isCompleted && (
+            {!hint && !isCompleted && challengeType === 'coding' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button 

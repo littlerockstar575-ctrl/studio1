@@ -28,16 +28,21 @@ import {
 } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const { activeGoal, goals, setActiveGoal, setGoals, coins, streak } = useAppContext();
+  const { activeGoal, goals, setActiveGoal, setGoals, userProfile, isProfileLoading } = useAppContext();
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
+
+  const streak = userProfile?.streak ?? 0;
+  const coins = userProfile?.coins ?? 0;
 
 
   const removeGoal = (goalToRemove: Goal) => {
-    setGoals(goals.filter(g => g.description !== goalToRemove.description));
+    const newGoals = goals.filter(g => g.description !== goalToRemove.description);
+    setGoals(newGoals);
     if (activeGoal?.description === goalToRemove.description) {
-      const newActiveGoal = goals.filter(g => g.description !== goalToRemove.description)[0] || null;
+      const newActiveGoal = newGoals[0] || null;
       setActiveGoal(newActiveGoal);
     }
   };
@@ -51,6 +56,28 @@ export default function DashboardPage() {
         case 'Godly': return <Badge variant="destructive">🤯 {difficulty}</Badge>;
         default: return <Badge variant="outline">{difficulty}</Badge>;
     }
+  }
+
+  if (isProfileLoading) {
+      return (
+          <div className="flex flex-col gap-6">
+               <div className="flex items-center justify-between">
+                    <Skeleton className="h-9 w-64" />
+                    <div className="flex gap-4">
+                        <Skeleton className="h-9 w-24" />
+                        <Skeleton className="h-9 w-24" />
+                    </div>
+                </div>
+                <div className="grid gap-6 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                        <Skeleton className="h-[24rem] w-full" />
+                    </div>
+                    <div className="md:col-span-1">
+                        <Skeleton className="h-[24rem] w-full" />
+                    </div>
+                </div>
+          </div>
+      )
   }
 
 
@@ -106,7 +133,7 @@ export default function DashboardPage() {
                                     </Button>
                                      <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="destructive" size="icon" className="h-8 w-8">
+                                            <Button variant="destructive" size="icon" className="h-8 w-8" disabled={goals.length <= 1}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </AlertDialogTrigger>
