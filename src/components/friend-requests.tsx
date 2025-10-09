@@ -21,20 +21,27 @@ export function FriendRequests() {
         if (!user || !firestore) return;
 
         const batch = writeBatch(firestore);
+        
+        // Reference to the friend request document in the current user's subcollection
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
-
-        let updateData: { status: 'accepted' | 'declined' } = { status: action };
+        
+        // Reference to the current user's profile document
+        const currentUserRef = doc(firestore, 'users', user.uid);
+        
+        // Reference to the sender's profile document
+        const senderUserRef = doc(firestore, 'users', request.senderId);
 
         if (action === "accept") {
-            const acceptorRef = doc(firestore, 'users', user.uid);
-            const senderRef = doc(firestore, 'users', request.senderId);
-
-            batch.update(acceptorRef, { friendIds: arrayUnion(request.senderId) });
-            batch.update(senderRef, { friendIds: arrayUnion(user.uid) });
+            // 1. Update the current user's (receiver's) friend list
+            batch.update(currentUserRef, { friendIds: arrayUnion(request.senderId) });
+            // 2. Update the sender's friend list
+            batch.update(senderUserRef, { friendIds: arrayUnion(user.uid) });
+            // 3. Update the status of the friend request to 'accepted'
+            batch.update(requestRef, { status: 'accepted' });
+        } else {
+            // Just update the status to 'declined'
+            batch.update(requestRef, { status: 'declined' });
         }
-        
-        // Always update the request status
-        batch.update(requestRef, updateData);
         
         batch.commit()
             .then(async () => {
@@ -44,10 +51,10 @@ export function FriendRequests() {
             .catch(serverError => {
                 // This is the required contextual error handling.
                 const permissionError = new FirestorePermissionError({
-                    path: requestRef.path, // This path is sufficient for batch updates
+                    path: `BATCH WRITE on /users/${user.uid} and /users/${request.senderId}`, 
                     operation: 'update',
                     requestResourceData: {
-                        friendRequestUpdate: updateData,
+                        friendRequestUpdate: { status: action },
                         ...(action === 'accept' && { 
                             userProfileUpdate: { friendIds: arrayUnion(request.senderId) },
                             friendProfileUpdate: { friendIds: arrayUnion(user.uid) }
