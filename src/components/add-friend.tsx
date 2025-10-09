@@ -15,7 +15,7 @@ import { Label } from "./ui/label";
 import { revalidateFriendsPage } from "@/lib/friends-actions";
 import { useAppContext } from "@/contexts/app-context";
 import { useFirestore } from "@/firebase/provider";
-import { collection, addDoc, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -54,8 +54,6 @@ export function AddFriend() {
         };
 
         // Non-blocking write with proper contextual error handling.
-        // We removed the pre-checks because they were causing permission errors.
-        // The security rules on the 'create' operation will handle validation.
         addDoc(requestsRef, requestData)
           .then(async () => {
               await revalidateFriendsPage();
@@ -63,6 +61,7 @@ export function AddFriend() {
               setFriendId("");
           })
           .catch(serverError => {
+              // This is the required contextual error handling.
               const permissionError = new FirestorePermissionError({
                   path: requestsRef.path,
                   operation: 'create',

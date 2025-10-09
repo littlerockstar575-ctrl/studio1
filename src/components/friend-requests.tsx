@@ -23,20 +23,18 @@ export function FriendRequests() {
         const batch = writeBatch(firestore);
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
 
-        let updateData: { status: 'accepted' | 'declined' };
+        let updateData: { status: 'accepted' | 'declined' } = { status: action };
 
-        if (action === "decline") {
-            updateData = { status: 'declined' };
-            batch.update(requestRef, updateData);
-        } else {
-            updateData = { status: 'accepted' };
+        if (action === "accept") {
             const acceptorRef = doc(firestore, 'users', user.uid);
             const senderRef = doc(firestore, 'users', request.senderId);
 
             batch.update(acceptorRef, { friendIds: arrayUnion(request.senderId) });
             batch.update(senderRef, { friendIds: arrayUnion(user.uid) });
-            batch.update(requestRef, updateData);
         }
+        
+        // Always update the request status
+        batch.update(requestRef, updateData);
         
         batch.commit()
             .then(async () => {
@@ -44,10 +42,17 @@ export function FriendRequests() {
                 toast({ title: "Success", description: action === 'accept' ? "Friend added!" : "Request declined.", duration: 2000 });
             })
             .catch(serverError => {
+                // This is the required contextual error handling.
                 const permissionError = new FirestorePermissionError({
-                    path: requestRef.path,
+                    path: requestRef.path, // This path is sufficient for batch updates
                     operation: 'update',
-                    requestResourceData: updateData
+                    requestResourceData: {
+                        friendRequestUpdate: updateData,
+                        ...(action === 'accept' && { 
+                            userProfileUpdate: { friendIds: arrayUnion(request.senderId) },
+                            friendProfileUpdate: { friendIds: arrayUnion(user.uid) }
+                        })
+                    }
                 });
                 errorEmitter.emit('permission-error', permissionError);
             });
