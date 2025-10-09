@@ -25,16 +25,14 @@ export function FriendRequests() {
         // Reference to the friend request document in the current user's subcollection
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
         
-        // Reference to the current user's profile document
+        // Reference to the current user's (receiver's) profile document
         const currentUserRef = doc(firestore, 'users', user.uid);
-        
-        // Reference to the sender's profile document
-        const senderUserRef = doc(firestore, 'users', request.senderId);
 
         if (action === "accept") {
             // 1. Update the current user's (receiver's) friend list
             batch.update(currentUserRef, { friendIds: arrayUnion(request.senderId) });
             // 2. Update the sender's friend list
+            const senderUserRef = doc(firestore, 'users', request.senderId);
             batch.update(senderUserRef, { friendIds: arrayUnion(user.uid) });
             // 3. Update the status of the friend request to 'accepted'
             batch.update(requestRef, { status: 'accepted' });
