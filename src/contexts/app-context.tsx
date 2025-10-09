@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, setDoc, query, where, DocumentData, collectionGroup } from "firebase/firestore";
+import { collection, doc, setDoc, query, where, DocumentData, collectionGroup, writeBatch, deleteDoc } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { User as FirebaseUser } from "firebase/auth";
@@ -84,14 +84,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     createUserProfile();
   }, [user, userProfile, isProfileLoading, userDocRef]);
 
-  // Fetch incoming friend requests from the user's subcollection
+  // Fetch incoming friend requests (both pending and accepted notifications)
   const friendRequestsQuery = useMemoFirebase(() => {
-    // Critical: Do not run query until user is available.
     if (!user) return null;
-    return query(collection(firestore, 'users', user.uid, 'friendRequests'), where('status', '==', 'pending'));
+    return collection(firestore, 'users', user.uid, 'friendRequests');
   }, [user, firestore]);
   
   const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
+
+  // This effect handles "accepted" notifications for the user who SENT the request
+  useEffect(() => {
+    if (!firestore || !user || !incomingFriendRequests) return;
+
+    const acceptedRequests = incomingFriendRequests.filter(req => req.status === 'accepted');
+
+    if (acceptedRequests.length > 0) {
+      const batch = writeBatch(firestore);
+
+      const currentUserRef = doc(firestore, 'users', user.uid);
+      
+      acceptedRequests.forEach(req => {
+        // Add the new friend to the current user's friend list
+        batch.update(currentUserRef, { friendIds: arrayUnion(req.receiverId) });
+        // Delete the "accepted" notification
+        const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', req.id);
+        batch.delete(requestRef);
+      });
+
+      batch.commit().catch(console.error);
+    }
+  }, [incomingFriendRequests, firestore, user]);
 
 
   // Fetch friends' profiles
@@ -99,6 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!userProfile || !userProfile.friendIds || userProfile.friendIds.length === 0) return null;
     return query(collection(firestore, 'users'), where('__name__', 'in', userProfile.friendIds));
   }, [userProfile, firestore]);
+
   const { data: friends, isLoading: isFriendsLoading } = useCollection<UserProfile>(friendsQuery);
 
   
