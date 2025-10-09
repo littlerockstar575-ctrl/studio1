@@ -8,7 +8,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Check, X } from "lucide-react";
 import { revalidateFriendsPage } from "@/lib/friends-actions";
 import { useFirestore } from "@/firebase/provider";
-import { doc, writeBatch, arrayUnion, collection } from "firebase/firestore";
+import { doc, writeBatch, arrayUnion } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -22,24 +22,25 @@ export function FriendRequests() {
 
         const batch = writeBatch(firestore);
         
+        // Reference to the incoming request in the current user's subcollection
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
+        
+        // Reference to the current user's main profile document
         const currentUserRef = doc(firestore, 'users', user.uid);
 
         if (action === "accept") {
+            // 1. Add the sender's ID to the current user's friend list
             batch.update(currentUserRef, { friendIds: arrayUnion(request.senderId) });
-            batch.delete(requestRef);
-
-            const senderRequestCollection = collection(firestore, 'users', request.senderId, 'friendRequests');
-            const senderNotificationRef = doc(senderRequestCollection);
-            batch.set(senderNotificationRef, {
-                 ...request, 
-                 status: 'accepted',
-                 id: senderNotificationRef.id
-            });
             
-        } else {
-            batch.delete(requestRef);
+            // 2. The sender's friend list is updated on their side via an "accepted" notification
+            // To notify the sender, we write back a record to THEIR friendRequests collection
+            // This requires rules allowing a user to write a request into another's subcollection.
+            const senderUserRef = doc(firestore, 'users', request.senderId);
+            batch.update(senderUserRef, { friendIds: arrayUnion(user.uid) });
         }
+        
+        // For both "accept" and "decline", we delete the request from the current user's list.
+        batch.delete(requestRef);
         
         batch.commit()
             .then(async () => {
