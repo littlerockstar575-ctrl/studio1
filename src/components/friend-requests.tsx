@@ -8,7 +8,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Check, X } from "lucide-react";
 import { revalidateFriendsPage } from "@/lib/friends-actions";
 import { useFirestore } from "@/firebase/provider";
-import { doc, writeBatch, arrayUnion } from "firebase/firestore";
+import { doc, writeBatch, arrayUnion, collection } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -22,29 +22,22 @@ export function FriendRequests() {
 
         const batch = writeBatch(firestore);
         
-        // Reference to the friend request document in the current user's subcollection
         const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', request.id);
-        
-        // Reference to the current user's (receiver's) profile document
         const currentUserRef = doc(firestore, 'users', user.uid);
 
         if (action === "accept") {
-            // 1. Update the current user's (receiver's) friend list
             batch.update(currentUserRef, { friendIds: arrayUnion(request.senderId) });
-            
-            // 2. Update the sender's friend list - THIS IS THE PROBLEM. A user cannot write to another user's doc.
-            // We will now correctly handle this on the client of the sender.
-            // For this to work, we need to update the status of the request so the sender knows it was accepted.
-            // Let's create a NEW request document in the SENDER's subcollection to notify them.
-            const senderNotificationRef = doc(collection(firestore, 'users', request.senderId, 'friendRequests'));
-            batch.set(senderNotificationRef, { ...request, status: 'accepted', id: senderNotificationRef.id });
-
-            // 3. Delete the original friend request from the receiver's subcollection
             batch.delete(requestRef);
+
+            const senderRequestCollection = collection(firestore, 'users', request.senderId, 'friendRequests');
+            const senderNotificationRef = doc(senderRequestCollection);
+            batch.set(senderNotificationRef, {
+                 ...request, 
+                 status: 'accepted',
+                 id: senderNotificationRef.id
+            });
             
         } else {
-            // Just update the status to 'declined'. The sender won't get a notification.
-            // A better approach would be to delete it.
             batch.delete(requestRef);
         }
         
@@ -54,7 +47,6 @@ export function FriendRequests() {
                 toast({ title: "Success", description: action === 'accept' ? "Friend added!" : "Request declined.", duration: 2000 });
             })
             .catch(serverError => {
-                // This error handling is now correct and will catch any other issues.
                 const permissionError = new FirestorePermissionError({
                     path: `BATCH WRITE on /users/${user.uid} and potentially /users/${request.senderId}`, 
                     operation: 'update',
