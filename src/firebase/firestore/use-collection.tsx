@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,13 +59,14 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // If the query/ref is not ready, reset state and do nothing.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
-      setIsLoading(false);
+      setIsLoading(false); // Not loading if there's no query
       setError(null);
       return;
     }
@@ -72,7 +74,6 @@ export function useCollection<T = any>(
     setIsLoading(true);
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -84,31 +85,39 @@ export function useCollection<T = any>(
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
+      (serverError: FirestoreError) => {
+        // This is the error callback from onSnapshot.
+        // It's where permission errors for real-time listeners are caught.
+
         // This logic extracts the path from either a ref or a query
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
+        // 1. Create the specialized, contextual error.
         const contextualError = new FirestorePermissionError({
-          operation: 'list',
+          operation: 'list', // A collection listener is a 'list' operation.
           path,
-        })
+        });
+        
+        // 2. Set the local error state for the component using this hook.
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false);
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        // trigger global error propagation
+        // 3. Emit the error to the global listener. This is the crucial step.
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
+    // Cleanup function to unsubscribe from the listener on unmount.
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery]); // Re-run effect if the target query/reference object changes.
+  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    throw new Error('useCollection was passed a query/reference that was not memoized with useMemoFirebase. This will cause infinite render loops.');
   }
+
   return { data, isLoading, error };
 }

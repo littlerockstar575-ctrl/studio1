@@ -1,3 +1,4 @@
+
 'use client';
     
 import { useState, useEffect } from 'react';
@@ -28,7 +29,7 @@ export interface UseDocResult<T> {
  * React hook to subscribe to a single Firestore document in real-time.
  * Handles nullable references.
  * 
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
+ * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedDocRef or BAD THINGS WILL HAPPEN
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
  * references
  *
@@ -39,18 +40,19 @@ export interface UseDocResult<T> {
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // If the docRef is not ready, reset state and do nothing.
     if (!memoizedDocRef) {
       setData(null);
-      setIsLoading(false);
+      setIsLoading(false); // Not loading if there's no ref
       setError(null);
       return;
     }
@@ -71,23 +73,32 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (serverError: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
+        // This is the error callback from onSnapshot.
+        // It's where permission errors for real-time listeners are caught.
         
-        // DO NOT set local error state. Let the global listener handle it.
-        // setError(contextualError) 
-        setData(null)
-        setIsLoading(false)
+        // 1. Create the specialized, contextual error.
+        const contextualError = new FirestorePermissionError({
+          operation: 'get', // A document listener is a 'get' operation.
+          path: memoizedDocRef.path,
+        });
+        
+        // 2. Set the local error state for the component using this hook.
+        setError(contextualError);
+        setData(null);
+        setIsLoading(false);
 
-        // trigger global error propagation
+        // 3. Emit the error to the global listener. This is the crucial step.
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
+    // Cleanup function to unsubscribe from the listener on unmount.
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef]); // Re-run effect if the memoizedDocRef changes.
+
+  if (memoizedDocRef && !memoizedDocRef.__memo) {
+    throw new Error('useDoc was passed a reference that was not memoized with useMemoFirebase. This will cause infinite render loops.');
+  }
 
   return { data, isLoading, error };
 }
