@@ -39,8 +39,7 @@ export function AddFriend() {
         setIsLoading(true);
 
         try {
-            // These are read operations, and we expect them to work or fail silently for now.
-            // The main point of failure is the write operation below.
+            // These read operations are safe to await as they check preconditions.
             const receiverRef = doc(firestore, "users", receiverId);
             const receiverDoc = await getDoc(receiverRef);
 
