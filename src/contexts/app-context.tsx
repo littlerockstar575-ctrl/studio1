@@ -14,6 +14,13 @@ export interface Goal {
   completedChallenges: number;
 }
 
+export interface DailyChallenge {
+    goalDescription: string;
+    challengeDescription: string;
+    assignedDate: string; // ISO date string
+    completed: boolean;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -23,6 +30,7 @@ export interface UserProfile {
   goals: Goal[];
   activeGoalDescription: string | null;
   friendIds: string[];
+  dailyChallenge?: DailyChallenge;
 }
 
 export interface FriendRequest {
@@ -212,3 +220,5 @@ export function useAppContext() {
   }
   return context;
 }
+
+    

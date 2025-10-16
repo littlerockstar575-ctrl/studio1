@@ -28,9 +28,20 @@
           "type": "number",
           "description": "The user's current streak of consecutive challenge completions."
         },
-        "goalId": {
+        "lastChallengeDate": {
           "type": "string",
-          "description": "Reference to the user's current Goal. (Relationship: User 1:1 Goal)"
+          "description": "The ISO date string of the last completed challenge, used for streak calculation."
+        },
+        "goals": {
+            "type": "array",
+            "description": "An array of the user's goals.",
+            "items": {
+                "$ref": "#/entities/Goal"
+            }
+        },
+        "activeGoalDescription": {
+            "type": "string",
+            "description": "The description of the user's currently active goal."
         },
         "friendIds": {
           "type": "array",
@@ -38,6 +49,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "dailyChallenge": {
+          "$ref": "#/entities/DailyChallenge"
         }
       },
       "required": [
@@ -45,8 +59,7 @@
         "name",
         "email",
         "coins",
-        "streak",
-        "goalId"
+        "streak"
       ]
     },
     "Goal": {
@@ -55,29 +68,23 @@
       "type": "object",
       "description": "Represents a user's defined goal.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the goal entity."
-        },
         "description": {
           "type": "string",
           "description": "A description of the goal (e.g., 'Lose 5kg', 'Learn Python')."
         },
-        "startDate": {
+        "difficulty": {
           "type": "string",
-          "description": "The date and time when the goal was started.",
-          "format": "date-time"
+          "enum": ["Beginner", "Intermediate", "Advanced", "Hacker", "Godly"]
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the user who set this goal. (Relationship: User 1:1 Goal)"
+        "completedChallenges": {
+          "type": "number",
+          "description": "The number of challenges completed for this goal."
         }
       },
       "required": [
-        "id",
         "description",
-        "startDate",
-        "userId"
+        "difficulty",
+        "completedChallenges"
       ]
     },
     "ChallengeTemplate": {
@@ -104,6 +111,31 @@
         "goalType",
         "description"
       ]
+    },
+    "DailyChallenge": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DailyChallenge",
+        "type": "object",
+        "description": "Represents the user's current daily challenge state.",
+        "properties": {
+            "goalDescription": {
+                "type": "string",
+                "description": "The goal this challenge is for."
+            },
+            "challengeDescription": {
+                "type": "string",
+                "description": "The text of the challenge."
+            },
+            "assignedDate": {
+                "type": "string",
+                "description": "The ISO date string when this challenge was assigned."
+            },
+            "completed": {
+                "type": "boolean",
+                "description": "Whether the challenge has been completed."
+            }
+        },
+        "required": ["goalDescription", "challengeDescription", "assignedDate", "completed"]
     },
     "UserChallenge": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -207,26 +239,6 @@
         }
       },
       {
-        "path": "/users/{userId}/goals/{goalId}",
-        "definition": {
-          "entityName": "Goal",
-          "schema": {
-            "$ref": "#/backend/entities/Goal"
-          },
-          "description": "Stores goals associated with a specific user. This enforces the relationship User 1:1 Goal. Only the owning user can access these goal.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user, corresponding to their Firebase Auth UID."
-            },
-            {
-              "name": "goalId",
-              "description": "The unique identifier for the user's goal."
-            }
-          ]
-        }
-      },
-      {
         "path": "/challengeTemplates/{challengeTemplateId}",
         "definition": {
           "entityName": "ChallengeTemplate",
@@ -238,26 +250,6 @@
             {
               "name": "challengeTemplateId",
               "description": "The unique identifier for the challenge template."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/userChallenges/{userChallengeId}",
-        "definition": {
-          "entityName": "UserChallenge",
-          "schema": {
-            "$ref": "#/backend/entities/UserChallenge"
-          },
-          "description": "Stores user challenges assigned to a specific user. Enforces path-based ownership, restricting access to only the owning user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user, corresponding to their Firebase Auth UID."
-            },
-            {
-              "name": "userChallengeId",
-              "description": "The unique identifier for the user challenge."
             }
           ]
         }
@@ -283,6 +275,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure has been updated to use a subcollection model for friend requests (/users/{userId}/friendRequests). This is a more secure and scalable approach than a root-level 'friendRequests' collection. It simplifies security rules by tying data directly to the user who owns it, ensuring users can only query and manage their own incoming requests. This change resolves persistent permission errors related to listing friend requests."
+    "reasoning": "The Firestore structure has been updated to use a subcollection model for friend requests (/users/{userId}/friendRequests). This is a more secure and scalable approach than a root-level 'friendRequests' collection. It simplifies security rules by tying data directly to the user who owns it, ensuring users can only query and manage their own incoming requests. This change resolves persistent permission errors related to listing friend requests. The User entity is also updated to hold the daily challenge state."
   }
 }
+
+    

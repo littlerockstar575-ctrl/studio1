@@ -66,62 +66,109 @@ export function DailyChallengeCard() {
 
   const userDocRef = user ? doc(firestore, "users", user.uid) : undefined;
 
-
   const fetchChallenge = useCallback(async () => {
-    if (!activeGoal) return;
+    if (!activeGoal || !userDocRef || !userProfile) return;
 
     setIsLoading(true);
     setError(null);
-    setChallenge(null);
-    setProgress(0);
-    setUserCode("");
     setPythonFact(null);
     setCompletionThought(null);
-    setIsCompletable(false);
     setHint(null);
-    
+
+    const todayStr = formatISO(new Date(), { representation: 'date' });
+    const userChallenge = userProfile.dailyChallenge;
+
+    let currentChallengeDescription: string | null = null;
+    let challengeAlreadyCompleted = false;
+
+    // Check if there is an existing challenge for today for the same goal
+    if (
+        userChallenge &&
+        userChallenge.assignedDate === todayStr &&
+        userChallenge.goalDescription === activeGoal.description
+    ) {
+        currentChallengeDescription = userChallenge.challengeDescription;
+        if(userChallenge.completed) {
+            challengeAlreadyCompleted = true;
+        }
+    } else {
+        // Generate a new challenge if no valid one exists
+        const result = await getDailyChallenge({
+            goal: activeGoal.description,
+            difficulty: activeGoal.difficulty,
+            completedChallenges: activeGoal.completedChallenges,
+        });
+
+        if (result.success) {
+            currentChallengeDescription = result.success;
+            const newChallenge = {
+                goalDescription: activeGoal.description,
+                challengeDescription: currentChallengeDescription,
+                assignedDate: todayStr,
+                completed: false,
+            };
+            await setDoc(userDocRef, { dailyChallenge: newChallenge }, { merge: true });
+        } else {
+            setError(result.failure || "An unknown error occurred.");
+            setIsLoading(false);
+            return;
+        }
+    }
+
+    setChallenge(currentChallengeDescription);
+     if (challengeAlreadyCompleted) {
+      setIsCompleted(true);
+      // Fetch thought/fact for already completed challenge
+      setIsThoughtLoading(true);
+      setIsFactLoading(true);
+      const [thoughtResult, factResult] = await Promise.all([
+          getCompletionThought({ goal: activeGoal.description, challenge: currentChallengeDescription! }),
+          (language === 'python') ? getPythonFact() : Promise.resolve(null)
+      ]);
+      if (thoughtResult?.success) setCompletionThought(thoughtResult.success);
+      if (factResult?.success) setPythonFact(factResult.success);
+      setIsThoughtLoading(false);
+      setIsFactLoading(false);
+    }
+
+
+    // This part runs for both existing and new challenges
     const classificationResult = await getClassifiedGoal(activeGoal.description);
 
-    let type: ChallengeType = 'other';
-    let detectedLanguage: string | undefined;
-
     if (classificationResult.success) {
-        type = classificationResult.success.type;
-        detectedLanguage = classificationResult.success.language;
+        const type = classificationResult.success.type;
+        setChallengeType(type);
+
+        if (type === 'coding') {
+            const lang = classificationResult.success.language || 'javascript';
+            const placeholder = `// write your ${lang} code here`;
+            setLanguage(lang);
+            setUserCode(placeholder);
+            setPlaceholderCode(placeholder);
+            setIsCompletable(true);
+        } else if (type === 'study') {
+            setTimer(CHALLENGE_DURATION_STUDY);
+            setIsCompletable(false);
+        } else {
+            setTimer(10);
+            setIsCompletable(false);
+        }
     } else {
         setError("Could not understand your goal. Please try rephrasing it in settings.");
-        setIsLoading(false);
-        return;
     }
-
-    setChallengeType(type);
-    if (type === 'coding') {
-        const lang = detectedLanguage || 'javascript';
-        const placeholder = `// write your ${lang} code here`;
-        setLanguage(lang);
-        setUserCode(placeholder);
-        setPlaceholderCode(placeholder);
-        setIsCompletable(true);
-    } else if (type === 'study') {
-        setTimer(CHALLENGE_DURATION_STUDY);
-    } else {
-        setTimer(10); 
-    }
-
-    const result = await getDailyChallenge({ goal: activeGoal.description, difficulty: activeGoal.difficulty, completedChallenges: activeGoal.completedChallenges });
-    if (result.success) {
-      setChallenge(result.success);
-    } else {
-      setError(result.failure || "An unknown error occurred.");
+    if (!challengeAlreadyCompleted) {
+        setIsCompleted(false);
+        setProgress(0);
     }
     setIsLoading(false);
-  }, [activeGoal]);
+
+  }, [activeGoal, userDocRef, userProfile, language]);
 
   useEffect(() => {
-    if (activeGoal) {
+    if (activeGoal && userProfile) {
       fetchChallenge();
     }
-  }, [fetchChallenge, activeGoal]);
+  }, [activeGoal, userProfile]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -147,7 +194,7 @@ export function DailyChallengeCard() {
   }, [isLoading, isCompleted, challenge, challengeType]);
   
   const handleCompletion = useCallback(async () => {
-    if (!activeGoal || !userProfile || !userDocRef) return;
+    if (!activeGoal || !userProfile || !userDocRef || !challenge) return;
 
     const today = new Date();
     const lastDate = userProfile.lastChallengeDate ? new Date(userProfile.lastChallengeDate) : null;
@@ -166,21 +213,23 @@ export function DailyChallengeCard() {
 
     const reward = challengeType === 'coding' ? 150 : 100;
     const newCoins = userProfile.coins + reward;
-
     const updatedGoal = { ...activeGoal, completedChallenges: activeGoal.completedChallenges + 1 };
-    const newGoals = userProfile.goals.map(g => g.description === updatedGoal.description ? updatedGoal : g);
 
     const updateData: Partial<any> = {
       coins: newCoins,
       streak: newStreak,
-      goals: newGoals,
+      goals: userProfile.goals.map(g => g.description === updatedGoal.description ? updatedGoal : g),
       activeGoalDescription: activeGoal.description,
+      dailyChallenge: {
+          ...userProfile.dailyChallenge,
+          completed: true,
+      }
     };
 
     if (shouldUpdateStreakDate) {
       updateData.lastChallengeDate = formatISO(today, { representation: 'date' });
     }
-
+    
     await setDoc(userDocRef, updateData, { merge: true });
 
     setIsCompleted(true);
@@ -188,7 +237,7 @@ export function DailyChallengeCard() {
     setIsFactLoading(true);
 
     const [thoughtResult, factResult] = await Promise.all([
-        activeGoal && challenge ? getCompletionThought({ goal: activeGoal.description, challenge }) : Promise.resolve(null),
+        getCompletionThought({ goal: activeGoal.description, challenge }),
         challengeType === 'coding' && language === 'python' ? getPythonFact() : Promise.resolve(null)
     ]);
 
@@ -231,7 +280,8 @@ export function DailyChallengeCard() {
   };
 
   const handleNewChallenge = () => {
-    setIsCompleted(false);
+    // This will trigger the fetchChallenge effect because userProfile will be updated by the completion
+    // and this function is called after completion. To be safe, we manually refetch.
     fetchChallenge();
   };
 
@@ -442,3 +492,5 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
+
+    
