@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -38,8 +39,7 @@ export function Header() {
               href="#"
               className="flex items-center gap-2 text-lg font-semibold mb-4"
             >
-              <Target className="h-6 w-6 text-primary" />
-              <span>GoalForge</span>
+              <span className="font-bold">GoalForge</span>
             </Link>
             {navItems.map((item) => (
               <Link
