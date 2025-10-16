@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Wallet, Users, Settings, Flame, Coins, Bot } from "lucide-react";
 
-import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -37,7 +36,7 @@ export function Sidebar() {
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <Logo />
+            <span className="text-xl font-bold">GoalForge</span>
           </Link>
         </div>
         <div className="flex-1">

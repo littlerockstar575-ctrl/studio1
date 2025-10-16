@@ -2,8 +2,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from "react";
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, setDoc, query, where, DocumentData, collectionGroup, writeBatch, deleteDoc } from "firebase/firestore";
+import { useUser, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, doc, setDoc, query, where, DocumentData, collectionGroup, writeBatch, deleteDoc, arrayUnion } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { User as FirebaseUser } from "firebase/auth";
@@ -77,14 +77,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           friendIds: [],
         };
         if (userDocRef) {
-          await setDoc(userDocRef, newUserProfile);
+          // Use non-blocking write with contextual error handling
+          setDoc(userDocRef, newUserProfile)
+            .catch(serverError => {
+              const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: newUserProfile,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+            });
         }
       }
     };
     createUserProfile();
   }, [user, userProfile, isProfileLoading, userDocRef]);
 
-  // Fetch incoming friend requests (both pending and accepted notifications)
+  // Fetch incoming friend requests
   const friendRequestsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, 'users', user.uid, 'friendRequests');
@@ -92,34 +101,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const { data: incomingFriendRequests, isLoading: isRequestsLoading } = useCollection<FriendRequest>(friendRequestsQuery);
 
-  // This effect handles "accepted" notifications for the user who SENT the request
+  // This effect handles "accepted" notifications from other users
   useEffect(() => {
-    if (!firestore || !user || !incomingFriendRequests) return;
-
-    const acceptedRequests = incomingFriendRequests.filter(req => req.status === 'accepted');
-
-    if (acceptedRequests.length > 0) {
-      const batch = writeBatch(firestore);
-
-      const currentUserRef = doc(firestore, 'users', user.uid);
-      
-      acceptedRequests.forEach(req => {
-        // Add the new friend to the current user's friend list
-        batch.update(currentUserRef, { friendIds: arrayUnion(req.receiverId) });
-        // Delete the "accepted" notification
-        const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', req.id);
-        batch.delete(requestRef);
-      });
-
-      batch.commit().catch(console.error);
-    }
-  }, [incomingFriendRequests, firestore, user]);
+      if (!firestore || !user || !incomingFriendRequests) return;
+  
+      const acceptedRequests = incomingFriendRequests.filter(req => req.status === 'accepted');
+  
+      if (acceptedRequests.length > 0) {
+        const batch = writeBatch(firestore);
+        const currentUserRef = doc(firestore, 'users', user.uid);
+        
+        acceptedRequests.forEach(req => {
+          // Add the new friend (who accepted the request) to the current user's friend list
+          batch.update(currentUserRef, { friendIds: arrayUnion(req.senderId) });
+          // Delete the "accepted" notification from our own subcollection
+          const requestRef = doc(firestore, 'users', user.uid, 'friendRequests', req.id);
+          batch.delete(requestRef);
+        });
+  
+        batch.commit().catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: `BATCH WRITE on /users/${user.uid}/friendRequests`,
+                operation: 'write',
+                requestResourceData: { acceptedRequests }
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+      }
+    }, [incomingFriendRequests, firestore, user]);
 
 
   // Fetch friends' profiles
   const friendsQuery = useMemoFirebase(() => {
     if (!userProfile || !userProfile.friendIds || userProfile.friendIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('__name__', 'in', userProfile.friendIds));
+    // Important: Firestore 'in' queries are limited to 30 items. For a larger friends list,
+    // this would need to be refactored (e.g., fetching documents one by one).
+    return query(collection(firestore, 'users'), where('__name__', 'in', userProfile.friendIds.slice(0, 30)));
   }, [userProfile, firestore]);
 
   const { data: friends, isLoading: isFriendsLoading } = useCollection<UserProfile>(friendsQuery);
@@ -130,9 +147,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ? goals.find(g => g.description === userProfile.activeGoalDescription) || null
     : goals.length > 0 ? goals[0] : null;
 
-  const updateFirestore = async (updates: Partial<UserProfile>) => {
+  const updateFirestore = (updates: Partial<UserProfile>) => {
     if (userDocRef) {
-      await setDoc(userDocRef, updates, { merge: true });
+      // Use non-blocking write with contextual error handling
+      setDoc(userDocRef, updates, { merge: true })
+        .catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: updates,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
     }
   };
 
