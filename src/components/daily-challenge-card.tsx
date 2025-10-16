@@ -119,17 +119,9 @@ export function DailyChallengeCard() {
 
   useEffect(() => {
     if (activeGoal) {
-        // Check if user has already completed a challenge today
-        if(userProfile?.lastChallengeDate && isToday(new Date(userProfile.lastChallengeDate))) {
-            setIsCompleted(true);
-            setChallenge("You've already crushed your challenge for today!");
-            setCompletionThought("Come back tomorrow for your next quest.");
-            setIsLoading(false);
-        } else {
-            fetchChallenge();
-        }
+      fetchChallenge();
     }
-  }, [fetchChallenge, activeGoal, userProfile?.lastChallengeDate]);
+  }, [fetchChallenge, activeGoal]);
   
   useEffect(() => {
     if (isLoading || isCompleted || !challenge || challengeType === 'coding') return;
@@ -156,37 +148,40 @@ export function DailyChallengeCard() {
   
   const handleCompletion = useCallback(async () => {
     if (!activeGoal || !userProfile || !userDocRef) return;
-    
+
     const today = new Date();
     const lastDate = userProfile.lastChallengeDate ? new Date(userProfile.lastChallengeDate) : null;
     let newStreak = userProfile.streak;
+    let shouldUpdateStreakDate = false;
 
-    if (lastDate) {
-        if (isYesterday(lastDate)) {
-            newStreak += 1; // It was yesterday, increment streak
-        } else if (!isToday(lastDate)) {
-            newStreak = 1; // It wasn't today or yesterday, reset streak
-        }
-        // If it was today, streak doesn't change (though this path shouldn't be hit due to UI guards)
-    } else {
-        newStreak = 1; // First challenge ever
+    // Only update streak logic if it's a new day
+    if (!lastDate || !isToday(lastDate)) {
+      shouldUpdateStreakDate = true;
+      if (lastDate && isYesterday(lastDate)) {
+        newStreak += 1; // It was yesterday, increment streak
+      } else {
+        newStreak = 1; // It wasn't yesterday or it's the first time, reset to 1
+      }
     }
-    
+
     const reward = challengeType === 'coding' ? 150 : 100;
     const newCoins = userProfile.coins + reward;
-    
+
     const updatedGoal = { ...activeGoal, completedChallenges: activeGoal.completedChallenges + 1 };
-    
-    // Update goal in goals array
     const newGoals = userProfile.goals.map(g => g.description === updatedGoal.description ? updatedGoal : g);
 
-    await setDoc(userDocRef, { 
-        coins: newCoins,
-        streak: newStreak,
-        lastChallengeDate: formatISO(today, { representation: 'date' }),
-        goals: newGoals,
-        activeGoalDescription: activeGoal.description, // ensure active goal is preserved
-     }, { merge: true });
+    const updateData: Partial<any> = {
+      coins: newCoins,
+      streak: newStreak,
+      goals: newGoals,
+      activeGoalDescription: activeGoal.description,
+    };
+
+    if (shouldUpdateStreakDate) {
+      updateData.lastChallengeDate = formatISO(today, { representation: 'date' });
+    }
+
+    await setDoc(userDocRef, updateData, { merge: true });
 
     setIsCompleted(true);
     setIsThoughtLoading(true);
@@ -317,16 +312,13 @@ export function DailyChallengeCard() {
   }
 
   if (isCompleted) {
-    const alreadyCompletedToday = challenge?.startsWith("You've already");
     return (
         <Card className="flex flex-col justify-center items-center min-h-[24rem] bg-accent/20 border-accent">
             <CardContent className="text-center space-y-4">
                 <PartyPopper className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
                 
-                {!alreadyCompletedToday && (
-                  <p className="text-accent-foreground/80">{`You've earned ${challengeType === 'coding' ? 150 : 100} coins and extended your streak!`}</p>
-                )}
+                <p className="text-accent-foreground/80">{`You've earned ${challengeType === 'coding' ? 150 : 100} coins!`}</p>
                 
                 {isThoughtLoading ? (
                     <Skeleton className="h-6 w-3/4 mx-auto" />
@@ -344,20 +336,18 @@ export function DailyChallengeCard() {
                   </div>
                 )}
                 
-                {!alreadyCompletedToday && (
-                    <div className="flex gap-4 justify-center pt-4">
-                        <Button onClick={handleNewChallenge}>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
-                        </Button>
-                    </div>
-                )}
+                <div className="flex gap-4 justify-center pt-4">
+                    <Button onClick={handleNewChallenge}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
+                    </Button>
+                </div>
 
-                 {showTestButton && !alreadyCompletedToday ? (
+                 {showTestButton ? (
                      <Button variant="outline" onClick={() => setIsTestModalOpen(true)} className="mt-2">
                         <BrainCircuit className="mr-2 h-4 w-4" /> Take a Bonus Test
                     </Button>
                 ) : (
-                    !alreadyCompletedToday && <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
+                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
                         <ShieldCheck className="h-4 w-4" />
                         <span>{challengesUntilTest} more challenge{challengesUntilTest > 1 ? 's' : ''} until the next test.</span>
                     </div>
