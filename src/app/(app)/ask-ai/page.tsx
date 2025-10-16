@@ -129,7 +129,7 @@ export default function AskAiPage() {
                         </Avatar>
                     )}
                     <div
-                        className={`max-w-xs md:max-w-md rounded-lg px-4 py-2 text-sm ${
+                        className={`max-w-xs md:max-w-md rounded-lg px-4 py-2 text-sm whitespace-pre-wrap ${
                         message.sender === "user"
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
