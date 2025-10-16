@@ -317,12 +317,16 @@ export function DailyChallengeCard() {
   }
 
   if (isCompleted) {
+    const alreadyCompletedToday = challenge?.startsWith("You've already");
     return (
         <Card className="flex flex-col justify-center items-center min-h-[24rem] bg-accent/20 border-accent">
             <CardContent className="text-center space-y-4">
                 <PartyPopper className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl font-bold text-accent-foreground">Challenge Complete!</h3>
-                <p className="text-accent-foreground/80">{!challenge?.startsWith("You've already") && `You've earned ${challengeType === 'coding' ? 150 : 100} coins and extended your streak!`}</p>
+                
+                {!alreadyCompletedToday && (
+                  <p className="text-accent-foreground/80">{`You've earned ${challengeType === 'coding' ? 150 : 100} coins and extended your streak!`}</p>
+                )}
                 
                 {isThoughtLoading ? (
                     <Skeleton className="h-6 w-3/4 mx-auto" />
@@ -340,7 +344,7 @@ export function DailyChallengeCard() {
                   </div>
                 )}
                 
-                {!challenge?.startsWith("You've already") && (
+                {!alreadyCompletedToday && (
                     <div className="flex gap-4 justify-center pt-4">
                         <Button onClick={handleNewChallenge}>
                             <RefreshCw className="mr-2 h-4 w-4" /> Forge Next Challenge
@@ -348,12 +352,12 @@ export function DailyChallengeCard() {
                     </div>
                 )}
 
-                 {showTestButton && !challenge?.startsWith("You've already") ? (
+                 {showTestButton && !alreadyCompletedToday ? (
                      <Button variant="outline" onClick={() => setIsTestModalOpen(true)} className="mt-2">
                         <BrainCircuit className="mr-2 h-4 w-4" /> Take a Bonus Test
                     </Button>
                 ) : (
-                    !challenge?.startsWith("You've already") && <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
+                    !alreadyCompletedToday && <div className="text-sm text-muted-foreground flex items-center justify-center gap-2 pt-2">
                         <ShieldCheck className="h-4 w-4" />
                         <span>{challengesUntilTest} more challenge{challengesUntilTest > 1 ? 's' : ''} until the next test.</span>
                     </div>
@@ -448,3 +452,5 @@ export function DailyChallengeCard() {
     </Card>
   );
 }
+
+    
