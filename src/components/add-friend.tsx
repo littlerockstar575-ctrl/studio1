@@ -15,7 +15,7 @@ import { Label } from "./ui/label";
 import { revalidateFriendsPage } from "@/lib/friends-actions";
 import { useAppContext } from "@/contexts/app-context";
 import { useFirestore } from "@/firebase/provider";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -50,7 +50,7 @@ export function AddFriend() {
             senderEmail: userProfile.email,
             receiverId: receiverId,
             status: 'pending' as const,
-            createdAt: new Date(),
+            createdAt: serverTimestamp(),
         };
 
         // Non-blocking write with proper contextual error handling.
