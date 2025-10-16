@@ -10,6 +10,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetTitle,
+  SheetDescription,
+  SheetHeader
 } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
@@ -34,27 +37,31 @@ export function Header() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
-            <Link
-              href="#"
-              className="flex items-center gap-2 text-lg font-semibold mb-4"
-            >
-              <span className="font-bold">GoalForge</span>
-            </Link>
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={cn(
-                  "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground",
-                  pathname === item.href && "bg-muted text-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+            <SheetHeader>
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                <SheetDescription className="sr-only">Main navigation links for the GoalForge app.</SheetDescription>
+            </SheetHeader>
+            <nav className="grid gap-2 text-lg font-medium">
+                <Link
+                href="#"
+                className="flex items-center gap-2 text-lg font-semibold mb-4"
+                >
+                <span className="font-bold">GoalForge</span>
+                </Link>
+                {navItems.map((item) => (
+                <Link
+                    key={item.label}
+                    href={item.href}
+                    className={cn(
+                    "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground",
+                    pathname === item.href && "bg-muted text-foreground"
+                    )}
+                >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                </Link>
+                ))}
+            </nav>
         </SheetContent>
       </Sheet>
       <div className="w-full flex-1">
