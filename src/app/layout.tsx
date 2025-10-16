@@ -5,9 +5,6 @@ import { Toaster } from '@/components/ui/toaster';
 export const metadata: Metadata = {
   title: 'GoalForge: Conquer Your Goals',
   description: 'Set goals, get daily challenges, and conquer them!',
-  icons: {
-    icon: 'data:;base64,iVBORw0KGgo=',
-  },
 };
 
 export default function RootLayout({
